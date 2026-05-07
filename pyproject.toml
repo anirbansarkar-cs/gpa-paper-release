@@ -3,12 +3,12 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "d3-dna-discrete-diffusion"
+name = "gpa"
 version = "0.1.0"
-description = "D3: DNA Discrete Diffusion - A diffusion model for DNA sequence generation"
+description = "GPA: Generative Population Annealing for test-time sequence design with pretrained generative models"
 readme = "README.md"
 authors = [
-    {name = "D3 DNA Team"}
+    {name = "Anonymous"}
 ]
 license = {text = "MIT"}
 requires-python = ">=3.8"
