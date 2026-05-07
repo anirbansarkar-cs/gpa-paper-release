@@ -25,7 +25,7 @@ from pathlib import Path
 import h5py
 import numpy as np
 
-LENTIMPRA_H5 = "${HOME}/Deep-SEDD/data/lenti_MPRA_K562_data.h5"
+LENTIMPRA_H5 = "${GPA_DATA_ROOT}/lentimpra/lenti_MPRA_K562_data.h5"
 ADAPTER_FWD = "AGGACCGGATCAACT"  # 15 bp 5' adapter
 ADAPTER_RC  = "CATTGCGTGAACCGA"  # 15 bp 3' adapter
 ADAPTER_LEN = 15

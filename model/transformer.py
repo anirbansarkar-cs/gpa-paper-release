@@ -168,7 +168,7 @@ class DDitFinalLayer(nn.Module):
 
 class TransformerModel(nn.Module):
     """
-    Pure Transformer SEDD Model.
+    Pure Transformer Model.
     
     This implementation is completely dataset-agnostic. All dataset-specific
     parameters (num_classes, sequence_length) are passed via config.

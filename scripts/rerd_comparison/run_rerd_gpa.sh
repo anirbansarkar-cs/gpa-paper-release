@@ -27,13 +27,9 @@ cd "$PROJECT_DIR"
 mkdir -p sbatch_out/rerd_comparison
 
 # ---- Backbone selection ---------------------------------------------------
-BACKBONE="${BACKBONE:-mdlm}"
-
 # ---- Paths ----------------------------------------------------------------
 SVDD_DIR="${SVDD_DIR:-${HOME}/SVDD}"
-SGDD_DIR="${SGDD_DIR:-${HOME}/SGDD}"
 MDLM_CKPT="${MDLM_CKPT:-${SVDD_DIR}/artifacts/DNA_Diffusion:v0/last.ckpt}"
-SEDD_U_CKPT="${SEDD_U_CKPT:-${SVDD_DIR}/artifacts/sedd_u_dna/dna_uniform}"
 ORACLE_CKPT="${ORACLE_CKPT:-${SVDD_DIR}/artifacts/DNA_evaluation:v0/model.ckpt}"
 EVAL_ORACLE_CKPT="${EVAL_ORACLE_CKPT:-}"
 
@@ -171,10 +167,8 @@ DIVERSITY_SUBSAMPLE="${DIVERSITY_SUBSAMPLE:-500}"
 # ===========================================================================
 CMD=(
     python scripts/rerd_comparison/run_rerd_gpa.py
-    --backbone "$BACKBONE"
     --oracle_checkpoint "$ORACLE_CKPT"
     --svdd_dir "$SVDD_DIR"
-    --sgdd_dir "$SGDD_DIR"
     --target_cell "$TARGET_CELL"
     --penalty_weight "$PENALTY_WEIGHT"
     --fitness_mode "$FITNESS_MODE"
@@ -232,11 +226,7 @@ if [[ -n "$STEPS" ]]; then
     CMD+=(--steps "$STEPS")
 fi
 
-if [[ "$BACKBONE" == "sedd_u" ]]; then
-    CMD+=(--sedd_u_checkpoint "$SEDD_U_CKPT")
-else
-    CMD+=(--mdlm_checkpoint "$MDLM_CKPT")
-fi
+CMD+=(--mdlm_checkpoint "$MDLM_CKPT")
 
 if [[ "$FROM_RANDOM" == "true" ]]; then
     CMD+=(--from_random)
@@ -323,11 +313,9 @@ fi
 echo "========================================================================"
 echo "GPA + DPS — RERD Comparison"
 echo "========================================================================"
-echo "Backbone:         $BACKBONE"
+echo "Backbone:         MDLM"
 echo "SVDD dir:         $SVDD_DIR"
-echo "SGDD dir:         $SGDD_DIR"
 echo "MDLM checkpoint:  $MDLM_CKPT"
-echo "SEDD-U checkpoint: $SEDD_U_CKPT"
 echo "Oracle checkpoint: $ORACLE_CKPT"
 echo "Eval oracle:      ${EVAL_ORACLE_CKPT:-none}"
 echo "Target cell:      $TARGET_CELL"

@@ -2,7 +2,7 @@
 
 Code release accompanying the paper *"GPA: Generative Population Annealing for Test-Time Sequence Design with Pretrained Generative Models"*.
 
-GPA is a backbone- and oracle-agnostic test-time SMC sampler over the reward-tilted distribution `pi_beta(x) ∝ p_theta(x) exp(beta · r(x))`. It runs unmodified on discrete-diffusion (MDLM, SEDD) and autoregressive language-model (HyenaDNA) backbones, and produces population-scale design pools (N ∈ [5,000, 20,000]) without any backbone fine-tuning.
+GPA is a backbone- and oracle-agnostic test-time SMC sampler over the reward-tilted distribution `pi_beta(x) ∝ p_theta(x) exp(beta · r(x))`. It runs unmodified on discrete-diffusion (MDLM) and autoregressive language-model (HyenaDNA) backbones, and produces population-scale design pools (N ∈ [5,000, 20,000]) without any backbone fine-tuning.
 
 ## Repository layout
 

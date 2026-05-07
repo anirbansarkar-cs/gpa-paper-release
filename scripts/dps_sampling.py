@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Predictor Gradient Guidance (DPS-style) Sampling for CFG-SEDD.
+Predictor Gradient Guidance (DPS-style) Sampling for the discrete-diffusion DNA model.
 
 At each denoising step, after computing transition probabilities, uses oracle
 gradients (via Gumbel-Softmax relaxation) to bias probabilities toward higher

@@ -43,7 +43,6 @@ from scripts.rerd_comparison.mdlm_wrapper import (
     load_mdlm, MDLMMutator, MDLMMutatorDPS,
     MDLMMutatorConfGated, MDLMMutatorKLConstrained,
 )
-from scripts.rerd_comparison.sedd_u_wrapper import load_sedd_u, SEDDUMutator, SEDDUMutatorDPS
 from scripts.rerd_comparison.enformer_oracle import load_enformer_oracle, EnformerOracle
 
 
@@ -51,16 +50,9 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description="GPA + DPS with SVDD MDLM + Enformer (RERD comparison)")
 
-    # Backbone selection
-    parser.add_argument("--backbone", default="mdlm",
-                        choices=["mdlm", "sedd_u"],
-                        help="Diffusion backbone: mdlm (masked) or sedd_u (uniform)")
-
     # Model paths
-    parser.add_argument("--mdlm_checkpoint", default=None,
+    parser.add_argument("--mdlm_checkpoint", required=True,
                         help="MDLM diffusion model checkpoint (last.ckpt)")
-    parser.add_argument("--sedd_u_checkpoint", default=None,
-                        help="SEDD-U checkpoint directory (contains config.yaml + checkpoints-meta/)")
     parser.add_argument("--oracle_checkpoint", required=True,
                         help="Enformer oracle checkpoint for guidance (model.ckpt)")
     parser.add_argument("--eval_oracle_checkpoint", default=None,
@@ -134,8 +126,7 @@ def parse_args():
                         help="Fraction of positions to mask per mutation")
     parser.add_argument("--mutation_batch_size", type=int, default=128)
     parser.add_argument("--steps", type=int, default=None,
-                        help="Number of denoising steps per mutation "
-                             "(default: 20 for sedd_u, 1 for mdlm)")
+                        help="Number of denoising steps per mutation (default: 1)")
 
     # DPS parameters
     parser.add_argument("--use_dps", action="store_true",
@@ -416,14 +407,14 @@ def main():
     print("GPA + DPS (RERD COMPARISON)")
     print("=" * 72)
     print(f"  Device:           {device}")
-    print(f"  Backbone:         {args.backbone}")
+    print(f"  Backbone:         MDLM")
     print(f"  Target cell:      {args.target_cell}")
     print(f"  Penalty weight:   {args.penalty_weight}")
     print(f"  Population:       {args.population_size:,}")
     print(f"  Max beta:         {args.max_beta}")
     print(f"  Noise fraction:   {args.noise_fraction}")
     print(f"  Fitness mode:     {args.fitness_mode}")
-    denoise_steps = args.steps if args.steps is not None else (20 if args.backbone == "sedd_u" else 1)
+    denoise_steps = args.steps if args.steps is not None else 1
     print(f"  Denoise steps:    {denoise_steps}")
     print(f"  DPS:              {args.use_dps} (eta={args.dps_eta})")
     print(f"  Guide start frac: {args.guide_start_frac}")
@@ -466,20 +457,10 @@ def main():
     print(f"  Output:           {args.output_dir}")
     print("=" * 72)
 
-    # ---- Load diffusion backbone ----
-    if args.backbone == "sedd_u":
-        sedd_u_ckpt = args.sedd_u_checkpoint or str(
-            Path(svdd_dir) / "artifacts/sedd_u_dna/dna_uniform"
-        )
-        print(f"\n[Model] Loading SEDD-U diffusion model...")
-        sedd_model, sedd_graph, sedd_noise = load_sedd_u(sedd_u_ckpt, sgdd_dir, device)
-        print(f"  Loaded: {sedd_u_ckpt}")
-    else:
-        assert args.mdlm_checkpoint is not None, \
-            "--mdlm_checkpoint required when --backbone=mdlm"
-        print("\n[Model] Loading MDLM diffusion model...")
-        mdlm = load_mdlm(args.mdlm_checkpoint, svdd_dir, device)
-        print(f"  Loaded: {args.mdlm_checkpoint}")
+    # ---- Load MDLM diffusion backbone ----
+    print("\n[Model] Loading MDLM diffusion model...")
+    mdlm = load_mdlm(args.mdlm_checkpoint, svdd_dir, device)
+    print(f"  Loaded: {args.mdlm_checkpoint}")
 
     # ---- Load Enformer oracle(s) ----
     print("\n[Oracle] Loading Enformer oracle (guidance)...")
@@ -520,44 +501,26 @@ def main():
 
     # ---- Build mutation function ----
     def _build_mutator(nf, use_dps):
-        """Build mutator for given noise_fraction and DPS setting."""
-        if args.backbone == "sedd_u":
-            if use_dps:
-                return SEDDUMutatorDPS(
-                    sedd_model, sedd_graph, sedd_noise, oracle,
-                    noise_fraction=nf,
-                    steps=denoise_steps,
-                    eta=args.dps_eta,
-                    tau_start=args.dps_tau,
-                    gc_dps_weight=args.gc_dps_weight,
-                    gc_dps_target=args.gc_dps_target,
-                    gc_pull_weight=args.gc_pull_weight,
-                    gc_pull_target=args.gc_pull_target,
-                    guide_start_frac=args.guide_start_frac,
-                )
+        """Build MDLM mutator for given noise_fraction and DPS setting."""
+        if use_dps:
+            base_kwargs = dict(
+                noise_fraction=nf, eta=args.dps_eta, tau_start=args.dps_tau,
+                gc_dps_weight=args.gc_dps_weight, gc_dps_target=args.gc_dps_target,
+                gc_pull_weight=args.gc_pull_weight, gc_pull_target=args.gc_pull_target,
+            )
+            if args.dps_mode == "conf_gated":
+                return MDLMMutatorConfGated(
+                    mdlm, oracle, gate_sharpness=args.gate_sharpness, **base_kwargs)
+            elif args.dps_mode == "kl_constrained":
+                return MDLMMutatorKLConstrained(
+                    mdlm, oracle, kl_budget=args.kl_budget, kl_mode=args.kl_mode, **base_kwargs)
             else:
-                return SEDDUMutator(sedd_model, sedd_graph, sedd_noise,
-                                    noise_fraction=nf, steps=denoise_steps)
+                return MDLMMutatorDPS(mdlm, oracle, **base_kwargs)
         else:
-            if use_dps:
-                base_kwargs = dict(
-                    noise_fraction=nf, eta=args.dps_eta, tau_start=args.dps_tau,
-                    gc_dps_weight=args.gc_dps_weight, gc_dps_target=args.gc_dps_target,
-                    gc_pull_weight=args.gc_pull_weight, gc_pull_target=args.gc_pull_target,
-                )
-                if args.dps_mode == "conf_gated":
-                    return MDLMMutatorConfGated(
-                        mdlm, oracle, gate_sharpness=args.gate_sharpness, **base_kwargs)
-                elif args.dps_mode == "kl_constrained":
-                    return MDLMMutatorKLConstrained(
-                        mdlm, oracle, kl_budget=args.kl_budget, kl_mode=args.kl_mode, **base_kwargs)
-                else:
-                    return MDLMMutatorDPS(mdlm, oracle, **base_kwargs)
-            else:
-                return MDLMMutator(mdlm, noise_fraction=nf)
+            return MDLMMutator(mdlm, noise_fraction=nf)
 
     mutate_fn = _build_mutator(args.noise_fraction, args.use_dps)
-    backbone_name = args.backbone.upper()
+    backbone_name = "MDLM"
     if args.use_dps:
         print(f"\n[Mutation] {backbone_name} + DPS (eta={args.dps_eta}, nf={args.noise_fraction})")
         if args.dps_mode != "standard":

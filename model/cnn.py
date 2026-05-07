@@ -18,7 +18,7 @@ from .layers import (
 
 class ConvolutionalModel(nn.Module):
     """
-    Pure Convolutional SEDD Model.
+    Pure Convolutional Model.
     
     This implementation is completely dataset-agnostic. All dataset-specific
     parameters (signal_dim, num_classes, sequence_length) are passed via config.

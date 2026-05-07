@@ -1,5 +1,5 @@
 # Core model architectures
-from .transformer import TransformerModel  # Import both new and original SEDD
+from .transformer import TransformerModel
 from .cnn import ConvolutionalModel
 from .layers import *
 

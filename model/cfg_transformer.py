@@ -1,7 +1,7 @@
 """
 CFG Transformer Architecture for D3-DNA Discrete Diffusion
 
-This module implements Classifier-Free Guidance (CFG) for the SEDD model on DNA.
+This module implements Classifier-Free Guidance (CFG) for the discrete-diffusion DNA model.
 It replaces the linear signal_embedding with Random Fourier Features + Cross-Attention,
 and adds CFG support through condition dropout during training and dual forward passes
 during sampling.
@@ -331,7 +331,7 @@ class CFGEmbeddingLayer(nn.Module):
 
 class CFGTransformerModel(nn.Module):
     """
-    CFG-enabled Transformer SEDD Model for DNA.
+    CFG-enabled Transformer Model for DNA.
 
     Combines Cross-Attention for activity conditioning and Classifier-Free Guidance
     for steering during sampling. Activity is encoded via Random Fourier Features
