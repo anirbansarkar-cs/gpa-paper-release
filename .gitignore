@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.DS_Store
+*.h5
+*.ckpt
+*.pt
+*.pth
+sbatch_out/
+*.out
+*.err
+.ipynb_checkpoints/

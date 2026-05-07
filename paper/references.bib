@@ -1,0 +1,652 @@
+% References for "GPA: Discrete Population Annealing"
+
+% --- Theoretical foundations ---
+
+@article{delmoral2006smc,
+  title={Sequential Monte Carlo samplers},
+  author={Del Moral, Pierre and Doucet, Arnaud and Jasra, Ajay},
+  journal={Journal of the Royal Statistical Society Series B: Statistical Methodology},
+  volume={68},
+  number={3},
+  pages={411--436},
+  year={2006},
+  publisher={Oxford University Press}
+}
+
+@article{delmoral2012adaptive,
+  title={An adaptive sequential {M}onte {C}arlo method for approximate {B}ayesian computation},
+  author={Del Moral, Pierre and Doucet, Arnaud and Jasra, Ajay},
+  journal={Statistics and Computing},
+  volume={22},
+  number={5},
+  pages={1009--1020},
+  year={2012},
+  publisher={Springer}
+}
+
+@article{liuchen1995,
+  title={Blind deconvolution via sequential imputations},
+  author={Liu, Jun S and Chen, Rong},
+  journal={Journal of the American Statistical Association},
+  volume={90},
+  number={430},
+  pages={567--576},
+  year={1995}
+}
+
+@article{pittshephard1999,
+  title={Filtering via simulation: Auxiliary particle filters},
+  author={Pitt, Michael K and Shephard, Neil},
+  journal={Journal of the American Statistical Association},
+  volume={94},
+  number={446},
+  pages={590--599},
+  year={1999}
+}
+
+@inproceedings{verge2015island,
+  title={On parallel implementation of sequential {M}onte {C}arlo methods: the island particle model},
+  author={Verg{\'e}, Christelle and Dubarry, Cyrille and Del Moral, Pierre and Moulines, Eric},
+  booktitle={Statistics and Computing},
+  volume={25},
+  number={2},
+  pages={243--260},
+  year={2015}
+}
+
+@article{kviman2024,
+  title={Optimised Annealed Sequential {M}onte {C}arlo Samplers},
+  author={Kviman, Oskar and others},
+  journal={arXiv preprint arXiv:2408.12057},
+  year={2024}
+}
+
+@article{blickle1995,
+  title={A comparison of selection schemes used in evolutionary algorithms},
+  author={Blickle, Tobias and Thiele, Lothar},
+  journal={Evolutionary Computation},
+  volume={4},
+  number={4},
+  pages={361--394},
+  year={1995}
+}
+
+@book{boyd2004convex,
+  title={Convex optimization},
+  author={Boyd, Stephen and Vandenberghe, Lieven},
+  year={2004},
+  publisher={Cambridge University Press}
+}
+
+% --- Discrete diffusion models ---
+
+@inproceedings{austin2021d3pm,
+  title={Structured denoising diffusion models in discrete state-spaces},
+  author={Austin, Jacob and Johnson, Daniel D and Ho, Jonathan and Tarlow, Daniel and van den Berg, Rianne},
+  booktitle={Advances in Neural Information Processing Systems},
+  volume={34},
+  pages={17981--17993},
+  year={2021}
+}
+
+@inproceedings{lou2024sedd,
+  title={Discrete diffusion modeling by estimating the ratios of the data distribution},
+  author={Lou, Aaron and Meng, Chenlin and Ermon, Stefano},
+  booktitle={International Conference on Machine Learning},
+  year={2024},
+  note={Best paper award}
+}
+
+@inproceedings{sahoo2024mdlm,
+  title={Simple and effective masked diffusion language models},
+  author={Sahoo, Subham and others},
+  booktitle={Advances in Neural Information Processing Systems},
+  year={2024}
+}
+
+@article{hyenadna2023,
+  title={{HyenaDNA}: Long-range genomic sequence modeling at single nucleotide resolution},
+  author={Nguyen, Eric and others},
+  booktitle={Advances in Neural Information Processing Systems},
+  year={2023}
+}
+
+% --- Discrete-diffusion guidance / SMC (closest competitors) ---
+
+@article{lee2025debiasing,
+  title={Debiasing Guidance for Discrete Diffusion with {SMC}},
+  author={Lee, Cheuk Kit and Jeha, Paul and Frellsen, Jes and Li{\'o}, Pietro and Albergo, Michael and Vargas, Francisco},
+  journal={arXiv preprint arXiv:2502.06079},
+  note={ICLR 2025},
+  year={2025}
+}
+
+@article{paniouli2025,
+  title={Test-Time Alignment of Discrete Diffusion Models with Sequential {M}onte {C}arlo},
+  author={Pani, Chinmay and Ou, Zijing and Li, Yingzhen},
+  journal={arXiv preprint arXiv:2505.22524},
+  note={ICML 2025 PUT Workshop},
+  year={2025}
+}
+
+@inproceedings{draft2024,
+  title={Directly fine-tuning diffusion models on differentiable rewards},
+  author={Clark, Kevin and Vicol, Paul and Swersky, Kevin and Fleet, David J},
+  booktitle={International Conference on Learning Representations},
+  year={2024}
+}
+
+@article{tds2023,
+  title={Practical and asymptotically exact conditional sampling in diffusion models},
+  author={Wu, Luhuan and Trippe, Brian and Naesseth, Christian and Blei, David and Cunningham, John P},
+  journal={Advances in Neural Information Processing Systems},
+  year={2023}
+}
+
+@article{selfrewarding2026,
+  title={Self-Rewarding Sequential Monte Carlo for Masked Diffusion Language Models},
+  author={Algolzw and others},
+  journal={arXiv preprint arXiv:2602.01849},
+  year={2026}
+}
+
+% --- Direct DNA/biology competitors (head-to-head) ---
+
+@inproceedings{drakes2024,
+  title={Fine-tuning discrete diffusion models with reward backpropagation},
+  author={Wang, Yixiang and Uehara, Masatoshi and others},
+  journal={arXiv preprint arXiv:2410.13643},
+  note={ICLR 2025},
+  year={2024}
+}
+
+@article{ctrldna2025,
+  title={{Ctrl-DNA}: Constrained reinforcement learning for cell-type-specific {DNA} regulatory element design},
+  author={Yang, Xiangxin and others},
+  journal={arXiv preprint arXiv:2505.20578},
+  year={2025}
+}
+
+@article{rerd2025,
+  title={Rectified Reward Discrete Diffusion for Test-Time Sequence Design},
+  author={Uehara, Masatoshi and others},
+  journal={arXiv preprint arXiv:2502.14944},
+  year={2025}
+}
+
+@article{csmc2026,
+  title={Constrained {S}equential {M}onte {C}arlo for Discrete Sequence Design},
+  author={Phunyaphibarn, Ekapol and others},
+  journal={arXiv preprint arXiv:2602.09424},
+  year={2026}
+}
+
+@article{evo2024,
+  title={{Evo 2}: Genome modeling and design across all domains of life},
+  author={Brixi, Garyk and others},
+  journal={Nature},
+  year={2026},
+  note={\url{https://www.nature.com/articles/s41586-026-10176-5}}
+}
+
+% --- Test-time gradient guidance ---
+
+@article{ledidi2020,
+  title={{LEDIDI}: Designing genomic sequences with frozen oracles via discrete editing},
+  author={Schreiber, Jacob and Lu, Yang Young and Noble, William Stafford},
+  journal={bioRxiv},
+  pages={2020.05.21.109686},
+  year={2020}
+}
+
+@inproceedings{nos2023,
+  title={Protein Design with Guided Discrete Diffusion},
+  author={Gruver, Nate and Stanton, Samuel and Frey, Nathan and others},
+  booktitle={Advances in Neural Information Processing Systems},
+  year={2023}
+}
+
+@article{proteinguide2025,
+  title={{ProteinGuide}: Token-level guidance for discrete protein generation},
+  author={Anonymous and others},
+  journal={arXiv preprint},
+  year={2025}
+}
+
+@article{stgflow2025,
+  title={Gumbel-Softmax Flow Matching for Discrete Sequence Design},
+  author={Tang, Yiming and Chatterjee, Aditi and others},
+  journal={arXiv preprint arXiv:2503.17361},
+  year={2025}
+}
+
+% --- Gumbel-softmax foundation ---
+
+@inproceedings{maddison2017concrete,
+  title={The {C}oncrete distribution: A continuous relaxation of discrete random variables},
+  author={Maddison, Chris J and Mnih, Andriy and Teh, Yee Whye},
+  booktitle={International Conference on Learning Representations},
+  year={2017}
+}
+
+@inproceedings{jang2017categorical,
+  title={Categorical reparameterization with {G}umbel-softmax},
+  author={Jang, Eric and Gu, Shixiang and Poole, Ben},
+  booktitle={International Conference on Learning Representations},
+  year={2017}
+}
+
+% --- Image-side (GPA-Image extension, optional citation) ---
+
+@inproceedings{chung2023dps,
+  title={Diffusion posterior sampling for general noisy inverse problems},
+  author={Chung, Hyungjin and Kim, Jeongsol and McCann, Michael Thompson and Klasky, Marc and Ye, Jong Chul},
+  booktitle={International Conference on Learning Representations},
+  year={2023}
+}
+
+@inproceedings{tfg2024,
+  title={{TFG}: A unified training-free guidance framework for diffusion models},
+  author={Ye, Jiajun and Liu, Hao and Chen, Mingyuan and others},
+  booktitle={Advances in Neural Information Processing Systems},
+  note={Spotlight},
+  year={2024}
+}
+
+% --- Population evolutionary baselines ---
+
+@article{adalead2020,
+  title={{AdaLead}: A simple and robust adaptive greedy search algorithm for sequence design},
+  author={Sinai, Sam and Wang, Richard and Whatley, Alexander and others},
+  journal={arXiv preprint arXiv:2010.02141},
+  year={2020}
+}
+
+% --- Datasets ---
+
+@article{gosai2024mpra,
+  title={Machine-guided design of cell-type-targeting cis-regulatory elements},
+  author={Gosai, Sager J. and Castro, Rodrigo I. and Fuentes, Natalia and Butts, John C. and Mouri, Kousuke and Alasoadura, Michael and Kales, Susan and Nguyen, Thouis R. and Noche, Ramil R. and Rao, Arya S. and Joung, Julia and Whalen, Sean and Andrews, Erica and Lal, Avantika and Gusev, Alexander and Tewhey, Ryan and Reilly, Steven K.},
+  journal={Nature},
+  volume={634},
+  number={8036},
+  pages={1211--1220},
+  year={2024},
+  publisher={Nature Publishing Group}
+}
+
+@article{reddy2026promoter,
+  title={Promoter design via discrete diffusion},
+  author={Reddy, Anand and others},
+  journal={To appear},
+  year={2026}
+}
+
+% --- New entries for revised draft ---
+
+@article{dnacraft2026,
+  title={Conditional {M}onte {C}arlo Tree Diffusion for Designing Cell-Type-Specific and Biologically Faithful Regulatory {DNA}},
+  author={Awasthi, Aakash and Bednarsky, Pawel and Schaefer, Marius and Bock, Christoph},
+  journal={arXiv preprint arXiv:2604.20488},
+  note={MLGenX @ ICLR 2026},
+  year={2026}
+}
+
+@article{ism2018,
+  title={Representation learning of genomic sequence motifs with convolutional neural networks},
+  author={Koo, Peter K and Eddy, Sean R},
+  journal={PLoS Computational Biology},
+  volume={15},
+  number={12},
+  year={2019},
+  note={In-silico mutagenesis (ISM) baseline}
+}
+
+@book{naesseth2019elements,
+  title={Elements of Sequential {M}onte {C}arlo},
+  author={Naesseth, Christian A and Lindsten, Fredrik and Sch{\"o}n, Thomas B},
+  publisher={Foundations and Trends in Machine Learning},
+  year={2019}
+}
+
+@article{doucet2009tutorial,
+  title={A tutorial on particle filtering and smoothing: Fifteen years later},
+  author={Doucet, Arnaud and Johansen, Adam M},
+  journal={Handbook of Nonlinear Filtering},
+  year={2009}
+}
+
+@article{neal2001ais,
+  title={Annealed importance sampling},
+  author={Neal, Radford M},
+  journal={Statistics and Computing},
+  volume={11},
+  number={2},
+  pages={125--139},
+  year={2001}
+}
+
+@article{chopin2002smc,
+  title={A sequential particle filter method for static models},
+  author={Chopin, Nicolas},
+  journal={Biometrika},
+  volume={89},
+  number={3},
+  pages={539--551},
+  year={2002}
+}
+
+@article{dau2022wastefree,
+  title={Waste-free Sequential {M}onte {C}arlo},
+  author={Dau, Hai-Dang and Chopin, Nicolas},
+  journal={Journal of the Royal Statistical Society Series B: Statistical Methodology},
+  volume={84},
+  number={1},
+  pages={114--148},
+  year={2022}
+}
+
+@article{enformer2021,
+  title={Effective gene expression prediction from sequence by integrating long-range interactions},
+  author={Avsec, {\v Z}iga and Agarwal, Vikram and Visentin, Daniel and others},
+  journal={Nature Methods},
+  volume={18},
+  pages={1196--1203},
+  year={2021}
+}
+
+@article{alphagenome2025,
+  title={{AlphaGenome}: Genome-wide variant effect prediction at base resolution},
+  author={Avsec, {\v Z}iga and others},
+  journal={bioRxiv},
+  year={2025},
+  note={Held-out cross-oracle in this paper.}
+}
+
+@article{taco2024,
+  title={{TACO}: Targeted activation-conditioned oracle-guided sequence design},
+  author={Anonymous and others},
+  journal={arXiv preprint},
+  year={2024}
+}
+
+% =============================================================================
+% Population Annealing — origin of the term (statistical-physics MC)
+% =============================================================================
+@inproceedings{hukushima2003pa,
+  title={Population annealing and its application to a frustrated model},
+  author={Hukushima, Koji and Iba, Yukito},
+  booktitle={The Monte Carlo Method in the Physical Sciences:
+             Celebrating the 50th Anniversary of the Metropolis Algorithm},
+  editor={Gubernatis, J. E.},
+  series={AIP Conference Proceedings},
+  volume={690},
+  pages={200--206},
+  year={2003},
+  publisher={AIP, New York}
+}
+
+@article{machta2010pa,
+  title={Population annealing with weighted averages: A {M}onte {C}arlo
+         method for rough free-energy landscapes},
+  author={Machta, J.},
+  journal={Phys. Rev. E},
+  volume={82},
+  number={2},
+  pages={026704},
+  year={2010},
+  doi={10.1103/PhysRevE.82.026704},
+  note={arXiv:1006.0252}
+}
+
+@article{wang2015pa,
+  title={Comparing {M}onte {C}arlo methods for finding ground states of
+         {I}sing spin glasses: Population annealing, simulated annealing,
+         and parallel tempering},
+  author={Wang, Wenlong and Machta, Jonathan and Katzgraber, Helmut G.},
+  journal={Phys. Rev. E},
+  volume={92},
+  number={1},
+  pages={013303},
+  year={2015}
+}
+
+% =============================================================================
+% Feynman-Kac SMC for diffusion — direct conceptual neighbors
+% =============================================================================
+@inproceedings{skreta2025fk,
+  title={{F}eynman-{K}ac correctors in diffusion: Annealing, guidance,
+         and product of experts},
+  author={Skreta, Marta and others},
+  booktitle={International Conference on Machine Learning (ICML)},
+  year={2025},
+  note={Spotlight; arXiv:2503.02819}
+}
+
+@article{skreta2026discretefk,
+  title={Discrete {F}eynman-{K}ac correctors},
+  author={Skreta, Marta and others},
+  journal={arXiv preprint arXiv:2601.10403},
+  year={2026}
+}
+
+@inproceedings{singhal2025fkst,
+  title={A general framework for inference-time scaling and steering
+         of diffusion models},
+  author={Singhal, Raghav and others},
+  booktitle={International Conference on Machine Learning (ICML)},
+  year={2025},
+  note={arXiv:2501.06848}
+}
+
+% =============================================================================
+% Discrete-diffusion guidance baselines (post-2024)
+% =============================================================================
+@article{li2024svdd,
+  title={Derivative-free guidance in continuous and discrete diffusion models
+         with soft value-based decoding ({SVDD})},
+  author={Li, Xiner and Zhao, Yulai and Wang, Chenyu and Scalia, Gabriele and Eraslan, Gokcen and Nair, Surag and Biancalani, Tommaso and Regev, Aviv and Levine, Sergey and Uehara, Masatoshi},
+  journal={arXiv preprint arXiv:2408.08252},
+  year={2024}
+}
+
+@article{schiff2024simpleguide,
+  title={Simple guidance mechanisms for discrete diffusion models},
+  author={Schiff, Yair and Sahoo, Subham Sekhar and Phung, Hao and Wang, Guanghan and Boshar, Sam and Dalla-torre, Hugo and de Almeida, Bernardo P. and Rush, Alexander and Pierrot, Thomas and Kuleshov, Volodymyr},
+  journal={arXiv preprint arXiv:2412.10193},
+  year={2024}
+}
+
+@inproceedings{nisonoff2024discreteguide,
+  title={Unlocking guidance for discrete state-space diffusion and flow models},
+  author={Nisonoff, Hunter and Xiong, Junhao and Allenspach, Stephan and Listgarten, Jennifer},
+  booktitle={International Conference on Learning Representations (ICLR)},
+  year={2025},
+  note={arXiv:2406.01572}
+}
+
+% =============================================================================
+% GFlowNets / population-based test-time samplers for sequences and LLMs
+% =============================================================================
+@inproceedings{jain2022gflownetbio,
+  title={Biological sequence design with {GFlowNets}},
+  author={Jain, Moksh and Bengio, Emmanuel and Hernandez-Garcia, Alex and Rector-Brooks, Jarrid and Dossou, Bonaventure F. P. and Ekbote, Chanakya A. and Fu, Jie and Zhang, Tianyu and Kilgour, Michael and Zhang, Dinghuai and Simine, Lena and Das, Payel and Bengio, Yoshua},
+  booktitle={International Conference on Machine Learning (ICML)},
+  year={2022},
+  note={arXiv:2203.04115}
+}
+
+@article{lew2023llamppl,
+  title={Sequential {M}onte {C}arlo steering of large language models using
+         probabilistic programs},
+  author={Lew, Alexander K. and Zhi-Xuan, Tan and Grand, Gabriel and Mansinghka, Vikash K.},
+  journal={arXiv preprint arXiv:2306.03081},
+  year={2023}
+}
+
+@inproceedings{loula2025syntsmc,
+  title={Syntactic and semantic control of large language models via
+         sequential {M}onte {C}arlo},
+  author={Loula, Jo{\~a}o and others},
+  booktitle={International Conference on Learning Representations (ICLR)},
+  year={2025},
+  note={Oral; arXiv:2504.13139}
+}
+
+% =============================================================================
+% Multi-objective biological sequence design (analog of our pw knob)
+% =============================================================================
+@article{tang2025mogdfm,
+  title={Multi-objective-guided discrete flow matching for controllable
+         biological sequence design ({MOG-DFM})},
+  author={Tang, Yangtian and others},
+  journal={arXiv preprint arXiv:2505.07086},
+  year={2025}
+}
+
+@article{tang2024peptune,
+  title={{PepTune}: De novo generation of therapeutic peptides with
+         multi-objective-guided discrete diffusion},
+  author={Tang, Sophia J. and others},
+  journal={arXiv preprint arXiv:2412.17780},
+  year={2024}
+}
+
+@article{yao2024proud,
+  title={{PROUD}: Pareto-guided diffusion model for multi-objective generation},
+  author={Yao, Yinghua and others},
+  journal={arXiv preprint arXiv:2407.04493},
+  year={2024}
+}
+
+% =============================================================================
+% Inference-time alignment / particle methods for diffusion (nice-to-have)
+% =============================================================================
+@inproceedings{kim2025das,
+  title={Test-time alignment of diffusion models without reward over-optimization
+         ({DAS})},
+  author={Kim, Sunwoo and others},
+  booktitle={International Conference on Learning Representations (ICLR)},
+  year={2025},
+  note={arXiv:2501.05803}
+}
+
+@article{park2025psisampler,
+  title={{$\Psi$-Sampler}: Initial particle sampling for {SMC}-based
+         inference-time reward alignment},
+  author={Park, Taehoon and others},
+  journal={arXiv preprint arXiv:2506.01320},
+  year={2025}
+}
+
+@article{lee2025driftlite,
+  title={{DriftLite}: Lightweight drift control for inference-time scaling
+         of diffusion models},
+  author={Lee, Sangmin and others},
+  journal={arXiv preprint arXiv:2509.21655},
+  year={2025}
+}
+
+@article{he2025crepe,
+  title={{CREPE}: Controlling diffusion with replica exchange},
+  author={He, Yifan and others},
+  journal={arXiv preprint arXiv:2509.23265},
+  year={2025}
+}
+
+@article{dang2025particlegibbs,
+  title={Inference-time scaling of diffusion language models with
+         particle {G}ibbs sampling},
+  author={Dang, Tuan and Han, Ying},
+  journal={arXiv preprint arXiv:2507.08390},
+  year={2025}
+}
+
+@article{hartman2025fkprotein,
+  title={Controllable protein design through {F}eynman-{K}ac steering},
+  author={Hartman, Lily and others},
+  journal={arXiv preprint arXiv:2511.09216},
+  year={2025}
+}
+
+@article{ouli2025isidd,
+  title={Inference-time scaling of discrete diffusion models via
+         importance weighting and optimal proposal design},
+  author={Ou, Zijing and Pani, Chinmay and Li, Yingzhen},
+  journal={arXiv preprint arXiv:2505.22524},
+  year={2025},
+  note={NeurIPS 2025; same as paniouli2025 author cluster.}
+}
+
+% =============================================================================
+% Search-based / structural generation neighbors
+% =============================================================================
+@article{geffner2025proteina,
+  title={Proteina: Scaling flow-based protein structure generative models},
+  author={Geffner, Tomas and others},
+  journal={arXiv preprint arXiv:2503.00710},
+  year={2025}
+}
+
+% =============================================================================
+% Closest "generative model + Population Annealing" semantic neighbor
+% (combinatorial optimization, not biology) -- cite to differentiate from name
+% =============================================================================
+@article{globalannealing2025,
+  title={Demonstrating real advantage of machine-learning-enhanced
+         {M}onte {C}arlo for combinatorial optimization},
+  author={Anonymous},
+  journal={arXiv preprint arXiv:2510.19544},
+  year={2025},
+  note={Introduces ``Global Annealing'' (PA + generative-model proposals)
+        for spin-glass MC; closest semantic neighbor to GPA's name.}
+}
+
+% =============================================================================
+% Reward hacking / specification gaming / RL fine-tuning of generative models
+% (cited in the introduction's reward-hacking motivation)
+% =============================================================================
+@inproceedings{skalse2022defining,
+  title={Defining and characterizing reward gaming},
+  author={Skalse, Joar and Howe, Nikolaus and Krasheninnikov, Dmitrii and Krueger, David},
+  booktitle={Advances in Neural Information Processing Systems (NeurIPS)},
+  year={2022}
+}
+@inproceedings{gao2023scalinglawsoverop,
+  title={Scaling laws for reward model overoptimization},
+  author={Gao, Leo and Schulman, John and Hilton, Jacob},
+  booktitle={International Conference on Machine Learning (ICML)},
+  year={2023}
+}
+@inproceedings{clark2024draft,
+  title={Directly fine-tuning diffusion models on differentiable rewards},
+  author={Clark, Kevin and Vicol, Paul and Swersky, Kevin and Fleet, David J.},
+  booktitle={International Conference on Learning Representations (ICLR)},
+  year={2024}
+}
+@inproceedings{ouyang2022rlhf,
+  title={Training language models to follow instructions with human feedback},
+  author={Ouyang, Long and Wu, Jeff and Jiang, Xu and Almeida, Diogo and Wainwright, Carroll L. and Mishkin, Pamela and Zhang, Chong and Agarwal, Sandhini and Slama, Katarina and Ray, Alex and Schulman, John and Hilton, Jacob and Kelton, Fraser and Miller, Luke and Simens, Maddie and Askell, Amanda and Welinder, Peter and Christiano, Paul and Leike, Jan and Lowe, Ryan},
+  booktitle={Advances in Neural Information Processing Systems (NeurIPS)},
+  year={2022}
+}
+
+% =============================================================================
+% UCB1 / UCT (cited in App. ucb_scaling for ucb_stacked variant)
+% =============================================================================
+@article{auer2002ucb,
+  title={Finite-time analysis of the multiarmed bandit problem},
+  author={Auer, Peter and Cesa-Bianchi, Nicol{\`o} and Fischer, Paul},
+  journal={Machine Learning},
+  volume={47},
+  number={2--3},
+  pages={235--256},
+  year={2002}
+}
+@inproceedings{kocsis2006uct,
+  title={Bandit based {M}onte-{C}arlo planning},
+  author={Kocsis, Levente and Szepesv{\'a}ri, Csaba},
+  booktitle={European Conference on Machine Learning (ECML)},
+  pages={282--293},
+  year={2006}
+}

@@ -1,0 +1,86 @@
+% GPA method overview — TikZ schematic
+% Compiled inline by main.tex via \input{figures/fig_overview_tikz}
+\begin{tikzpicture}[
+  >={Stealth[length=2mm]},
+  font=\footnotesize,
+  node distance=4mm and 6mm,
+  block/.style={draw, rounded corners=2pt, align=center, minimum height=8mm,
+                fill=blue!4, inner sep=2pt},
+  oracle/.style={draw, rounded corners=2pt, align=center, minimum height=8mm,
+                 fill=orange!10, inner sep=2pt},
+  diffop/.style={draw, rounded corners=2pt, align=center, minimum height=8mm,
+                 fill=green!8, inner sep=2pt},
+  ctrl/.style={draw, dashed, rounded corners=2pt, align=center,
+               fill=gray!5, inner sep=2pt, minimum height=7mm},
+  particle/.style={draw, fill=blue!12, minimum width=4.5mm, minimum height=2mm,
+                   inner sep=0pt, rounded corners=1pt},
+  every label/.append style={font=\scriptsize\itshape, gray!60!black},
+  arr/.style={->, semithick}
+]
+
+% --- Layer 1: population at step t ---
+\node[block] (pop) at (0,0) {Population $\{x_t^i\}_{i=1}^N$\\(weights $w_t^i$)};
+
+% small particle stack visual under "pop"
+\foreach \y in {0.55,0.4,0.25,0.1,-0.05,-0.2} {
+  \node[particle] at ([yshift=-9mm]pop.south |- 0,\y) {};
+}
+
+% --- Layer 2: oracle scoring + ESS-adaptive Δβ ---
+\node[oracle, right=10mm of pop] (oracle) {Oracle reward\\$r(x_t^i)$};
+\node[ctrl, below=2mm of oracle, text width=22mm] (ess)
+  {$\Delta\beta_t$ via bisection\\$\ESS{\geq}\alpha N$};
+
+\draw[arr] (pop.east) -- (oracle.west);
+\draw[arr] (oracle.south) -- (ess.north);
+
+% --- Layer 3: reweight + (maybe) resample ---
+\node[block, right=10mm of oracle, text width=24mm, align=center] (rw)
+  {Reweight\\$w_t^i\!\propto\!\exp(\Delta\beta_t r)$};
+\node[ctrl, below=2mm of rw, text width=24mm] (resamp)
+  {Resample if $\ESS{<}\alpha N$\\(systematic / stratified)};
+
+\draw[arr] (oracle.east) -- (rw.west);
+\draw[arr] (ess.east) -| ([xshift=-3mm]resamp.west) -- (resamp.west);
+\draw[arr] (rw.south) -- (resamp.north);
+
+% --- Layer 4: mutation kernel (diffusion proposal) ---
+\node[diffop, right=10mm of rw, text width=28mm] (mut)
+  {Mutate via $K_\beta$:\\partial-mask + denoise $p_\theta$};
+\draw[arr] (resamp.east) -| ([xshift=-3mm]mut.west) -- (mut.west);
+
+% --- Layer 5: optional extensions (above mut) ---
+\node[ctrl, above=3mm of mut, text width=28mm] (kbranch)
+  {$K$-branch + argmax\\(reparameterized $\beta$, Prop.~\ref{prop:K})};
+\node[ctrl, above=3mm of kbranch, text width=28mm] (dps)
+  {Optional: Gumbel-DPS\\$\nabla_x r$ push (biased)};
+\node[ctrl, below=3mm of mut, text width=28mm] (lam)
+  {Optional: conformity $\lambda$\\target $\pi_{\beta,\lambda}$};
+
+\draw[arr, dashed] (kbranch.south) -- (mut.north);
+\draw[arr, dashed] (dps.south) -- (kbranch.north);
+\draw[arr, dashed] (lam.north) -- (mut.south);
+
+% --- Layer 6: next population / loop / output ---
+\node[block, below=14mm of mut, text width=22mm, align=center] (next)
+  {Population\\$\{x_{t+1}^i\}_{i=1}^N$};
+\draw[arr] (mut.south) -- ++(0,-3mm) -| (next.north);
+
+% feedback loop
+\draw[arr, gray!70!black]
+  (next.west) -- ++(-3mm,0)
+  |- ([yshift=-12mm]pop.south)
+  -- ([yshift=-12mm]pop.south) -- ([yshift=-1mm]pop.south);
+
+% --- final output node ---
+\node[block, right=12mm of next, text width=26mm, align=center, fill=red!6] (out)
+  {Design pool\\$\{(x_T^i, w_T^i)\}$};
+\draw[arr] (next.east) -- node[above, font=\scriptsize, sloped]{$\beta_t\!=\!\beta_*$} (out.west);
+
+% --- header labels per layer ---
+\node[font=\scriptsize\bfseries, above=1.5mm of pop, text=blue!50!black] {1. Init};
+\node[font=\scriptsize\bfseries, above=10mm of oracle, text=orange!60!black] {2. Score \& adapt};
+\node[font=\scriptsize\bfseries, above=10mm of rw, text=blue!50!black] {3. Reweight \& resample};
+\node[font=\scriptsize\bfseries, above=10mm of dps, text=green!40!black] {4. Mutate (proposal)};
+
+\end{tikzpicture}

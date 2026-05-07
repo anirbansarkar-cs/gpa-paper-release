@@ -1,0 +1,9 @@
+# DNA enhancer pretraining data: ENCODE V4 cCRE parquet shards produced by
+# scripts/dna_craft_comparison/enhancer/data/curate_encode_ccre.py.
+train: encode_ccre
+valid: encode_ccre
+tokenizer_name_or_path: dna_acgt          # custom 6-token tokenizer (see dna_dataloader.py)
+cache_dir: ${GPA_REPO_ROOT}/results/dna_craft_comparison/enhancer/ccre
+parquet_dir: ${GPA_REPO_ROOT}/results/dna_craft_comparison/enhancer/ccre
+wrap: False
+streaming: False
