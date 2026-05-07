@@ -162,7 +162,7 @@ def main() -> None:
 
     sub = doc.add_paragraph()
     sub.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    sub_run = sub.add_run("Anirban Sarkar — 2026-04-30")
+    sub_run = sub.add_run("Anonymous — 2026")
     sub_run.italic = True
     sub_run.font.size = Pt(11)
 
