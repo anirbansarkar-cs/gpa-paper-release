@@ -36,7 +36,7 @@ QOS="${FORCE_QOS:-fast}"
 # JAX AG-stage2 needs cuDNN-capable H100 driver (≥555). Exclude the driver-545
 # nodes per reference_jax_alphagenome_cluster_setup.md. This is a hard infra
 # constraint, NOT covered by feedback_no_gpu_exclusions.md.
-EXCLUDE="--exclude=bamgpu20,bamgpu21,bamgpu24,bamgpu25,bamgpu26,bamgpu27,bamgpu28,bamgpu29"
+EXCLUDE="--exclude=gpunode20,gpunode21,gpunode24,gpunode25,gpunode26,gpunode27,gpunode28,gpunode29"
 
 SHARED_BASE=(
     SGDD_DIR="$SGDD_DIR" MDLM_CKPT="$MDLM_CKPT" ORACLE_CKPT="$ORACLE_CKPT"

@@ -93,7 +93,7 @@ wandb:
   enabled: true
   project: d3-promoter
   name: promoter-transformer
-  entity: d3-cshl
+  entity: anonymous-entity
   tags: []
   notes: ""
 

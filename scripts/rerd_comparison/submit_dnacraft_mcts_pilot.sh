@@ -15,7 +15,7 @@
 #   - Dialed arm (max_steps=12, no DPS): ~5 min expected → 20 min wall.
 #   - Memory: 4 CPU × 3 GB = 12 GB (~1.5× peak).
 #
-# QOS routing: round-robin {fast, default, koolab_shared, bio_ai} — wall fits
+# QOS routing: round-robin {fast, default, qos_long, bio_ai} — wall fits
 # all four. Spreads load when fast hits MaxJobsPU.
 
 set -euo pipefail
@@ -39,7 +39,7 @@ declare -A SEED_POOL=(
 )
 
 # ── QOS routing (round-robin across 4) ────────────────────────────────
-QOS_LIST=(fast default bio_ai)         # koolab_shared excluded (full)
+QOS_LIST=(fast default bio_ai)         # qos_long excluded (full)
 QOS_FULL=(0 0 0)                        # 1 = QOS hit submit limit, skip
 QOS_IDX=0
 SELECTED_QOS=""

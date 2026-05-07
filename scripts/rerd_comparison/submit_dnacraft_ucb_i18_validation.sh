@@ -3,8 +3,8 @@
 # 13 new jobs (K562 s42/s1042 already done at i=18 from the scaling sweep).
 # Same recipe as pilot ucb_stacked but i=18 instead of i=12.
 #
-# Routing: nodelist=bamgpu20,21,24,25,26,27,28 + bamgpu19,bamgpu100 fallback
-# (h100 nodes user doesn't use for AG JAX). 1 job to kooq/koolab if available.
+# Routing: nodelist=gpunode20,21,24,25,26,27,28 + gpunode19,gpunode100 fallback
+# (h100 nodes user doesn't use for AG JAX). 1 job to partition_b/qos_long if available.
 set -euo pipefail
 
 PROJECT_DIR="${GPA_REPO_ROOT}"
@@ -23,7 +23,7 @@ declare -A SEED_POOL=(
     [sknsh]="results/rerd_comparison/gosai_seeds_sknsh_gc45_55.h5"
 )
 
-NODELIST="bamgpu20,bamgpu21,bamgpu24,bamgpu25,bamgpu26,bamgpu27,bamgpu28,bamgpu19,bamgpu100"
+NODELIST="gpunode20,gpunode21,gpunode24,gpunode25,gpunode26,gpunode27,gpunode28,gpunode19,gpunode100"
 
 C3_ARGS="--use_dps --dps_eta 3000 --dps_penalty_weight 0.30 --penalty_weight 0.30 --max_beta 25 --gc_dps_target 0.60 --gc_dps_weight 10"
 
@@ -35,7 +35,7 @@ submit_job() {
     local SEED_FILE="${SEED_POOL[$CELL]}"
     local SCRIPT="${TMPDIR_SCRIPTS}/${TAG}.sh"
 
-    # Build SBATCH script. h100 constraint applied via GRES type for kooq;
+    # Build SBATCH script. h100 constraint applied via GRES type for partition_b;
     # via #SBATCH --constraint=h100 for gpuq.
     cat > "${SCRIPT}" <<SBATCH_EOF
 #!/bin/bash
@@ -51,7 +51,7 @@ conda activate d3_cuda118
 set -euo pipefail
 SBATCH_EOF
 
-    # Add h100 constraint only for gpuq (kooq uses gres type instead)
+    # Add h100 constraint only for gpuq (partition_b uses gres type instead)
     if [ "${PART}" = "gpuq" ]; then
         sed -i '/#SBATCH --gres=/a #SBATCH --constraint=h100' "${SCRIPT}"
     fi
@@ -100,14 +100,14 @@ NL_ARG="--nodelist=${NODELIST}"
 GRES_GPUQ="gpu:1"
 GRES_KOOQ="gpu:h100:1"
 
-# Check if kooq has an available slot (no pending koolab jobs of mine, and at
+# Check if partition_b has an available slot (no pending qos_long jobs of mine, and at
 # least one free GPU slot). If yes, send the first HepG2 job there.
 USE_KOOQ_FOR_FIRST=0
-if [ -z "$(squeue -u $(whoami) -p kooq -h 2>/dev/null)" ]; then
-    KOOQ_FREE=$(scontrol show node bamgpu101 2>/dev/null | grep -oE "AllocTRES=.*gres/gpu=[0-9]+" | grep -oE "[0-9]+$" || echo 4)
+if [ -z "$(squeue -u $(whoami) -p partition_b -h 2>/dev/null)" ]; then
+    KOOQ_FREE=$(scontrol show node gpunode101 2>/dev/null | grep -oE "AllocTRES=.*gres/gpu=[0-9]+" | grep -oE "[0-9]+$" || echo 4)
     if [ "${KOOQ_FREE}" -lt "4" ]; then
         USE_KOOQ_FOR_FIRST=1
-        echo "  kooq has free slot (alloc=${KOOQ_FREE}/4) — first HepG2 job → kooq"
+        echo "  partition_b has free slot (alloc=${KOOQ_FREE}/4) — first HepG2 job → partition_b"
     fi
 fi
 
@@ -115,16 +115,16 @@ fi
 # QOS rotation: explicit per-job to avoid the subshell bug from before
 declare -a JOBS=(
     "dnacraft_ucb_iter_i18_K8_d2_hepg2_s42|hepg2|42|default"
-    "dnacraft_ucb_iter_i18_K8_d2_hepg2_s1042|hepg2|1042|koolab_shared"
+    "dnacraft_ucb_iter_i18_K8_d2_hepg2_s1042|hepg2|1042|qos_long"
     "dnacraft_ucb_iter_i18_K8_d2_hepg2_s2042|hepg2|2042|bio_ai"
     "dnacraft_ucb_iter_i18_K8_d2_hepg2_s3042|hepg2|3042|default"
-    "dnacraft_ucb_iter_i18_K8_d2_hepg2_s4042|hepg2|4042|koolab_shared"
+    "dnacraft_ucb_iter_i18_K8_d2_hepg2_s4042|hepg2|4042|qos_long"
     "dnacraft_ucb_iter_i18_K8_d2_k562_s2042|k562|2042|bio_ai"
     "dnacraft_ucb_iter_i18_K8_d2_k562_s3042|k562|3042|default"
-    "dnacraft_ucb_iter_i18_K8_d2_k562_s4042|k562|4042|koolab_shared"
+    "dnacraft_ucb_iter_i18_K8_d2_k562_s4042|k562|4042|qos_long"
     "dnacraft_ucb_iter_i18_K8_d2_sknsh_s42|sknsh|42|bio_ai"
     "dnacraft_ucb_iter_i18_K8_d2_sknsh_s1042|sknsh|1042|default"
-    "dnacraft_ucb_iter_i18_K8_d2_sknsh_s2042|sknsh|2042|koolab_shared"
+    "dnacraft_ucb_iter_i18_K8_d2_sknsh_s2042|sknsh|2042|qos_long"
     "dnacraft_ucb_iter_i18_K8_d2_sknsh_s3042|sknsh|3042|bio_ai"
     "dnacraft_ucb_iter_i18_K8_d2_sknsh_s4042|sknsh|4042|default"
 )
@@ -133,7 +133,7 @@ idx=0
 for entry in "${JOBS[@]}"; do
     IFS='|' read -r TAG CELL SEED QOS <<< "${entry}"
     if [ "${idx}" -eq 0 ] && [ "${USE_KOOQ_FOR_FIRST}" -eq 1 ]; then
-        submit_job "${TAG}" "${CELL}" "${SEED}" kooq koolab "" "${GRES_KOOQ}"
+        submit_job "${TAG}" "${CELL}" "${SEED}" partition_b qos_long "" "${GRES_KOOQ}"
     else
         submit_job "${TAG}" "${CELL}" "${SEED}" gpuq "${QOS}" "${NL_ARG}" "${GRES_GPUQ}"
     fi

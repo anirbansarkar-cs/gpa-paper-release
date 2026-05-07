@@ -10,7 +10,7 @@
 #SBATCH --qos=fast
 #SBATCH --partition=gpuq
 #SBATCH --constraint=h100
-#SBATCH --exclude=bamgpu29
+#SBATCH --exclude=gpunode29
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=anonymous@example.com
 

@@ -8,9 +8,9 @@
 # 2 seeds per point on K562 (cleanest variance in pilot) → 12 jobs total.
 #
 # Routing (per user 2026-05-03):
-#   - 11 jobs → gpuq with --nodelist=bamgpu20,21,24,25,26,27,28 (free of AG JAX work)
-#   - 1 job  → kooq + koolab QOS (exactly one slot free)
-#     The kooq job is the longest projected (branch K=32 i=12 s42, ~90 min).
+#   - 11 jobs → gpuq with --nodelist=gpunode20,21,24,25,26,27,28 (free of AG JAX work)
+#   - 1 job  → partition_b + qos_long QOS (exactly one slot free)
+#     The partition_b job is the longest projected (branch K=32 i=12 s42, ~90 min).
 #
 # Wall: 4h fixed (well above any projected runtime; under fast QOS cap of 4h).
 # Memory: 4 CPU × 3 GB = 12 GB (matches pilot).
@@ -27,13 +27,13 @@ MDLM_CKPT="${SVDD_DIR}/artifacts/DNA_Diffusion:v0/last.ckpt"
 ORACLE_CKPT="${SVDD_DIR}/artifacts/DRAKES_oracles/reward_oracle_ft.ckpt"
 EVAL_CKPT="${SVDD_DIR}/artifacts/DRAKES_oracles/reward_oracle_eval.ckpt"
 SEED_FILE="results/rerd_comparison/gosai_seeds_k562_gc45_55.h5"
-NODELIST="bamgpu20,bamgpu21,bamgpu24,bamgpu25,bamgpu26,bamgpu27,bamgpu28"
+NODELIST="gpunode20,gpunode21,gpunode24,gpunode25,gpunode26,gpunode27,gpunode28"
 
 # standard GPA recipe args (same as pilot ucb_stacked)
 C3_ARGS="--use_dps --dps_eta 3000 --dps_penalty_weight 0.30 --penalty_weight 0.30 --max_beta 25 --gc_dps_target 0.60 --gc_dps_weight 10"
 
 # Round-robin QOS for gpuq jobs
-QOS_LIST=(fast default koolab_shared bio_ai)
+QOS_LIST=(fast default qos_long bio_ai)
 QOS_IDX=0
 next_gpuq_qos() {
     local q="${QOS_LIST[$((QOS_IDX % ${#QOS_LIST[@]}))]}"
@@ -117,7 +117,7 @@ echo "==========================================================================
 echo "UCB-MCTS scaling sweep — K562, 12 jobs"
 echo "  Iterations: i ∈ {18, 24, 36}, K=8, d=2"
 echo "  Branching:  K ∈ {16, 24, 32}, i=12, d=2"
-echo "  Routing: 11 → gpuq nodelist=${NODELIST}; 1 → kooq/koolab (longest job)"
+echo "  Routing: 11 → gpuq nodelist=${NODELIST}; 1 → partition_b/qos_long (longest job)"
 echo "============================================================================="
 
 # ── Iterations sweep (6 jobs, all gpuq nodelist) ────────────────────────
@@ -132,16 +132,16 @@ for I in 18 24 36; do
     done
 done
 
-# ── Branching sweep (6 jobs total: 5 gpuq nodelist + 1 kooq/koolab) ─────
+# ── Branching sweep (6 jobs total: 5 gpuq nodelist + 1 partition_b/qos_long) ─────
 echo
 echo "--- Branching sweep (i=12, d=2) ---"
 for K in 16 24 32; do
     for SEED in "${SEEDS[@]}"; do
         TAG="dnacraft_ucb_branch_K${K}_i12_d2_k562_s${SEED}"
         export SEED
-        # Send the heaviest job (K=32 s42) to the kooq/koolab free slot
+        # Send the heaviest job (K=32 s42) to the partition_b/qos_long free slot
         if [ "${K}" = "32" ] && [ "${SEED}" = "42" ]; then
-            submit_job "${TAG}" "${K}" 12 kooq koolab ""
+            submit_job "${TAG}" "${K}" 12 partition_b qos_long ""
         else
             QOS=$(next_gpuq_qos)
             submit_job "${TAG}" "${K}" 12 gpuq "${QOS}" "--nodelist=${NODELIST}"

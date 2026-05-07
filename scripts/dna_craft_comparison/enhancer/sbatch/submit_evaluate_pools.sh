@@ -8,7 +8,7 @@
 #SBATCH --time=03:45:00
 #SBATCH --output=${GPA_REPO_ROOT}/sbatch_out/dna_craft_comparison/eval_%j.out
 #SBATCH --error=${GPA_REPO_ROOT}/sbatch_out/dna_craft_comparison/eval_%j.err
-#SBATCH --exclude=bamgpu29
+#SBATCH --exclude=gpunode29
 
 set -euo pipefail
 

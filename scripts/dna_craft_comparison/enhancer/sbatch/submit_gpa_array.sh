@@ -11,7 +11,7 @@
 #SBATCH --array=0-8%8
 #SBATCH --output=${GPA_REPO_ROOT}/sbatch_out/dna_craft_comparison/gpa_enhancer_%A_%a.out
 #SBATCH --error=${GPA_REPO_ROOT}/sbatch_out/dna_craft_comparison/gpa_enhancer_%A_%a.err
-#SBATCH --exclude=bamgpu29
+#SBATCH --exclude=gpunode29
 
 # 9-task array: 3 cells × 3 replicate seeds.
 # Index map: cell = cells[i // 3], seed = i % 3.

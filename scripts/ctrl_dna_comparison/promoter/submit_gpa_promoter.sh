@@ -45,7 +45,7 @@ mkdir -p sbatch_out/ctrl_dna_comparison "${OUT_DIR}"
 
 if [[ "${MODE}" == "smoke" ]]; then
     POP=500; MAX_BETA=10; MAX_STEPS=8; WALL="02:00:00"; MUT_BS=128
-    QOS="koolab_shared"
+    QOS="qos_long"
     PW="${PW:-0.0}"
     ETA="${ETA:-3000}"
 else

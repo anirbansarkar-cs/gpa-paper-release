@@ -10,7 +10,7 @@
 #SBATCH --time=01:00:00
 #SBATCH --output=${GPA_REPO_ROOT}/sbatch_out/dna_craft_comparison/enformer_gate_%j.out
 #SBATCH --error=${GPA_REPO_ROOT}/sbatch_out/dna_craft_comparison/enformer_gate_%j.err
-#SBATCH --exclude=bamgpu29
+#SBATCH --exclude=gpunode29
 
 set -euo pipefail
 

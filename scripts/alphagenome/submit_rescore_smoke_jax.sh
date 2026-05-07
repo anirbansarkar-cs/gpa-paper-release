@@ -10,10 +10,10 @@
 #SBATCH --qos=fast
 #SBATCH --partition=gpuq
 #SBATCH --constraint=h100
-# Driver split (probed 2026-04-25): NEW (580.126) on bamgpu{15,16,17,18,19,22,23};
-# OLD (545.23.8) on bamgpu{20,21,24,25,27,28}. cuDNN 9.x in jaxlib 0.9.1 needs
-# driver >=555, so force onto the new-driver H100s. (bamgpu26 = V100, also stale.)
-#SBATCH --exclude=bamgpu20,bamgpu21,bamgpu24,bamgpu25,bamgpu26,bamgpu27,bamgpu28,bamgpu29
+# Driver split (probed 2026-04-25): NEW (580.126) on gpunode{15,16,17,18,19,22,23};
+# OLD (545.23.8) on gpunode{20,21,24,25,27,28}. cuDNN 9.x in jaxlib 0.9.1 needs
+# driver >=555, so force onto the new-driver H100s. (gpunode26 = V100, also stale.)
+#SBATCH --exclude=gpunode20,gpunode21,gpunode24,gpunode25,gpunode26,gpunode27,gpunode28,gpunode29
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=anonymous@example.com
 

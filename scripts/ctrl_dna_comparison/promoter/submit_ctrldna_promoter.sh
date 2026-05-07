@@ -60,7 +60,7 @@ else
     RESUME_FLAG=""
     if [[ "${MODE}" == "smoke" ]]; then
         MAX_ITER=10; EPOCH=3; BATCH=32; WALL="02:00:00"; CKPT_INT=0
-        QOS="koolab_shared"
+        QOS="qos_long"
     else
         MAX_ITER=200; EPOCH=5; BATCH=128; WALL="48:00:00"; CKPT_INT=50
         QOS="bio_ai"

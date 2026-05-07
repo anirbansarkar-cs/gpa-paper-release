@@ -36,7 +36,7 @@ python ${PROMOTER_DIR}/eval_oracles.py \\
 EOF
 
 JID=$(sbatch --parsable \
-    --qos="koolab_shared" \
+    --qos="qos_long" \
     --time="01:00:00" \
     --job-name="eval_promoter_oracles" \
     --output="sbatch_out/ctrl_dna_comparison/eval_promoter_oracles_%j.out" \

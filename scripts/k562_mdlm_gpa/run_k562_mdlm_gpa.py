@@ -375,7 +375,7 @@ def start_ag_server(socket_path, batch_size=64):
     """
     # AG_ENV env var picks the conda env: 'alphagenome' (default, jaxlib 0.9 +
     # cuDNN 9, needs driver >=555) or 'alphagenome_oldcudnn' (jaxlib 0.4.34 +
-    # cuDNN 8.9.7, works on driver >=520 — covers the bamgpu25/27/etc fleet).
+    # cuDNN 8.9.7, works on driver >=520 — covers the gpunode25/27/etc fleet).
     ag_env = os.environ.get("AG_ENV", "alphagenome")
     ag_python = f"${HOME}/.conda/envs/{ag_env}/bin/python"
     server_script = str(Path(__file__).parent / "ag_oracle_server.py")

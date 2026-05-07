@@ -1,7 +1,7 @@
 #!/bin/bash
 # DRAKES-protocol scoring for all Phase C pools.
 #   gpa_output_pool.h5 -> drakes_protocol/<name>.json
-# Auto-skips already-scored. Spreads across {default, koolab_shared, fast}.
+# Auto-skips already-scored. Spreads across {default, qos_long, fast}.
 set -euo pipefail
 
 H5_NAME="gpa_output_pool.h5"
@@ -18,7 +18,7 @@ SCRIPT_DIR="scripts/rerd_comparison"
 mkdir -p "${OUT_DIR}" sbatch_out/rerd_comparison
 TMPDIR_SCRIPTS=$(mktemp -d)
 
-QOSES=("default" "koolab_shared" "fast")
+QOSES=("default" "qos_long" "fast")
 # Per-QOS time = WALL but fast capped at 04:00:00
 QOS_TIME=("06:00:00" "06:00:00" "04:00:00")
 

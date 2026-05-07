@@ -94,7 +94,7 @@ wandb:
   enabled: false
   project: d3-promoter
   name: promoter-convolutional
-  entity: d3-cshl
+  entity: anonymous-entity
   tags: []
   notes: ""
 

@@ -30,15 +30,15 @@ fi
 BIO_AI_USED=0
 
 # ── Pool-size → (wall, qos) tiering ──────────────────────────────────
-# Big jobs (>=180K) prefer koolab_shared (48h cap); biggest (>=280K) can use bio_ai if budget allows.
+# Big jobs (>=180K) prefer qos_long (48h cap); biggest (>=280K) can use bio_ai if budget allows.
 # Default (12h cap) handles medium jobs.
 pick_tier() {
     local N="$1"
     if   [ "$N" -lt  80000 ]; then echo "06:00:00 default"
     elif [ "$N" -lt 180000 ]; then echo "10:00:00 default"
-    elif [ "$N" -lt 280000 ]; then echo "14:00:00 koolab_shared"
-    elif [ "$N" -lt 400000 ]; then echo "18:00:00 koolab_shared"
-    else                           echo "30:00:00 koolab_shared"
+    elif [ "$N" -lt 280000 ]; then echo "14:00:00 qos_long"
+    elif [ "$N" -lt 400000 ]; then echo "18:00:00 qos_long"
+    else                           echo "30:00:00 qos_long"
     fi
 }
 
@@ -117,7 +117,7 @@ EOF
             "${SCRIPT}" 2>/dev/null
     }
     # Try primary, then alt. If both full and bio_ai budget remains, try bio_ai.
-    # Walls are capped per QOS: default=12h, koolab_shared=48h, bio_ai=48h.
+    # Walls are capped per QOS: default=12h, qos_long=48h, bio_ai=48h.
     cap_wall() {
         local Q="${1-}" W="${2-}" wh
         wh=${W%%:*}
@@ -128,8 +128,8 @@ EOF
     JID=$(submit_to "${QOS}" "${PWALL}" || true)
     USED_QOS="${QOS}"; USED_WALL="${WALL}"
     if [ -z "${JID}" ]; then
-        # primary full → try the other of {default, koolab_shared}
-        if [ "${QOS}" = "default" ]; then ALT_QOS="koolab_shared"; else ALT_QOS="default"; fi
+        # primary full → try the other of {default, qos_long}
+        if [ "${QOS}" = "default" ]; then ALT_QOS="qos_long"; else ALT_QOS="default"; fi
         ALT_WALL="$(cap_wall "${ALT_QOS}" "${WALL}")"
         JID=$(submit_to "${ALT_QOS}" "${ALT_WALL}" || true)
         USED_QOS="${ALT_QOS}"; USED_WALL="${ALT_WALL}"

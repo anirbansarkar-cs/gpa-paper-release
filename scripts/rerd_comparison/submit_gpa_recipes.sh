@@ -1,10 +1,10 @@
 #!/bin/bash
 # Phase C v2 — GPA recipe sweep targeting JASPAR/3-mer recovery (post-Phase-A re-plan).
 # 28 unique recipes × 3 reps = 84 jobs.
-# Routing: {default, koolab_shared, fast} only — bio_ai/koolab excluded per user 2026-04-29.
+# Routing: {default, qos_long, fast} only — bio_ai/qos_long excluded per user 2026-04-29.
 # Wall-time fit:
 #   - bf=1, max_beta ≤ 50           → fast (4h wall) eligible
-#   - bf=1, max_beta ≥ 75 OR bf > 1 → default (12h) or koolab_shared (2d)
+#   - bf=1, max_beta ≥ 75 OR bf > 1 → default (12h) or qos_long (2d)
 set -euo pipefail
 
 PROJECT_DIR="${GPA_REPO_ROOT}"
@@ -23,8 +23,8 @@ SEED_POOL_NATURAL="results/rerd_comparison/gosai_seeds_hepg2_gc45_55.h5"
 # ── QOS rotation ──────────────────────────────────────────────────────
 # Tracks slot index per QOS; routing picks the first QOS in preference list
 # that the job's wall-time can fit into.
-declare -A SLOT_COUNT=( [default]=0 [koolab_shared]=0 [fast]=0 )
-declare -A QOS_TIME=( [default]="05:00:00" [koolab_shared]="07:00:00" [fast]="04:00:00" )
+declare -A SLOT_COUNT=( [default]=0 [qos_long]=0 [fast]=0 )
+declare -A QOS_TIME=( [default]="05:00:00" [qos_long]="07:00:00" [fast]="04:00:00" )
 
 # Pick QOS based on whether the job fits in fast (≤3h50m wall).
 # Round-robin across eligible QOSes.
@@ -32,20 +32,20 @@ choose_qos() {
     local FITS_FAST="$1"   # "yes" or "no"
     if [ "${FITS_FAST}" = "yes" ]; then
         # cycle across all 3
-        local TOTAL=$((SLOT_COUNT[default] + SLOT_COUNT[koolab_shared] + SLOT_COUNT[fast]))
+        local TOTAL=$((SLOT_COUNT[default] + SLOT_COUNT[qos_long] + SLOT_COUNT[fast]))
         local idx=$((TOTAL % 3))
         case $idx in
             0) echo "default" ;;
-            1) echo "koolab_shared" ;;
+            1) echo "qos_long" ;;
             2) echo "fast" ;;
         esac
     else
-        # cycle across default and koolab_shared only
-        local TOTAL=$((SLOT_COUNT[default] + SLOT_COUNT[koolab_shared]))
+        # cycle across default and qos_long only
+        local TOTAL=$((SLOT_COUNT[default] + SLOT_COUNT[qos_long]))
         local idx=$((TOTAL % 2))
         case $idx in
             0) echo "default" ;;
-            1) echo "koolab_shared" ;;
+            1) echo "qos_long" ;;
         esac
     fi
 }
@@ -80,7 +80,7 @@ submit_job() {
 #SBATCH --mem-per-cpu=10G
 #SBATCH --gres=gpu:1
 #SBATCH --constraint=h100
-#SBATCH --exclude=bamgpu29
+#SBATCH --exclude=gpunode29
 #SBATCH --mail-type=FAIL
 #SBATCH --mail-user=anonymous@example.com
 
@@ -156,5 +156,5 @@ rm -rf "${TMPDIR_SCRIPTS}"
 echo
 echo "============================================================================="
 echo "Phase C submission complete."
-echo "Slot counts: default=${SLOT_COUNT[default]}  koolab_shared=${SLOT_COUNT[koolab_shared]}  fast=${SLOT_COUNT[fast]}"
+echo "Slot counts: default=${SLOT_COUNT[default]}  qos_long=${SLOT_COUNT[qos_long]}  fast=${SLOT_COUNT[fast]}"
 echo "Outputs → results/rerd_comparison/run_*/gpa_output*.h5"

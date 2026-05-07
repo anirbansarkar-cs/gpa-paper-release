@@ -55,7 +55,7 @@ python ${PROMOTER_DIR}/train_oracles.py \\
 EOF
 
     JID=$(sbatch --parsable \
-        --qos="koolab_shared" \
+        --qos="qos_long" \
         --time="24:00:00" \
         --job-name="${JOB_NAME}" \
         --output="sbatch_out/ctrl_dna_comparison/${JOB_NAME}_%j.out" \
@@ -66,4 +66,4 @@ done
 
 rm -rf "${TMPDIR_SCRIPTS}"
 echo ""
-echo "Done. 3 jobs submitted (koolab_shared, 24H, any gpu)."
+echo "Done. 3 jobs submitted (qos_long, 24H, any gpu)."

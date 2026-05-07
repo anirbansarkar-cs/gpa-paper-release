@@ -14,9 +14,9 @@
 #   N=10k ~7min, N=20k ~14min. Pad 1.5-2x per paper-push wall-time policy.
 #
 # Routing: all jobs fit under 4h wall -> rotate across 4 QOS
-#   {fast, default, koolab_shared, bio_ai}. Spreads load so 'fast' (which
+#   {fast, default, qos_long, bio_ai}. Spreads load so 'fast' (which
 #   drains fastest at this small per-job size) doesn't bottleneck.
-#   koolab QOS deliberately excluded per user. No GPU node exclusions.
+#   qos_long QOS deliberately excluded per user. No GPU node exclusions.
 # Run output: results/rerd_comparison/dnacraft_nsweep_n{N}_{cell}_s{SEED}/
 # Score with run_batch_score.py --pattern 'dnacraft_nsweep_*' --source pool
 
@@ -57,10 +57,10 @@ declare -A WALL_BY_N=(
 )
 
 # QOS rotation across 4 gpuq QOS. fast (4h) drains fastest; the 2-day pair
-# (koolab_shared, bio_ai) and default (12h) cushion the rest. All 4 live on
+# (qos_long, bio_ai) and default (12h) cushion the rest. All 4 live on
 # gpuq with --constraint=h100, so no per-QOS partition/GRES branching needed.
 declare -A SLOT_COUNT=(
-    [fast]=0 [default]=0 [koolab_shared]=0 [bio_ai]=0
+    [fast]=0 [default]=0 [qos_long]=0 [bio_ai]=0
 )
 QOS_ORDER=(fast)
 choose_qos() {

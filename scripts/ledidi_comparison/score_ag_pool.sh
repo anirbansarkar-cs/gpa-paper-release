@@ -14,7 +14,7 @@
 # reference_jax_alphagenome_cluster_setup.md). Old-driver H100s and V100s
 # get excluded here. This is a real driver constraint, NOT a stale policy
 # (so feedback_no_gpu_exclusions.md doesn't apply to this job).
-#SBATCH --exclude=bamgpu20,bamgpu21,bamgpu24,bamgpu25,bamgpu26,bamgpu27,bamgpu28
+#SBATCH --exclude=gpunode20,gpunode21,gpunode24,gpunode25,gpunode26,gpunode27,gpunode28
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=anonymous@example.com
 

@@ -92,7 +92,7 @@ wandb:
   enabled: true
   project: d3-lentimpra
   name: lentimpra-transformer
-  entity: d3-cshl
+  entity: anonymous-entity
   tags: []
   notes: ""
 

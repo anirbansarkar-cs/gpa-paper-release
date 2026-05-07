@@ -6,9 +6,9 @@
 #
 # Modes produce epoch-tagged output directories so multiple Stage 1 variants
 # can coexist (e.g. e3 for paper-match vs e15 for a denser-conditioning arm):
-#   smoke -> checkpoints/hyenadna_promoter_smoke/   (3 epochs, 2H wall, koolab_shared)
-#   e3    -> checkpoints/hyenadna_promoter_e3/      (3 epochs, 2H wall, koolab_shared)
-#   e15   -> checkpoints/hyenadna_promoter_e15/     (15 epochs, 4H wall, koolab_shared)
+#   smoke -> checkpoints/hyenadna_promoter_smoke/   (3 epochs, 2H wall, qos_long)
+#   e3    -> checkpoints/hyenadna_promoter_e3/      (3 epochs, 2H wall, qos_long)
+#   e15   -> checkpoints/hyenadna_promoter_e15/     (15 epochs, 4H wall, qos_long)
 # For a custom epoch count, export EPOCHS=<N> and pass mode=`custom`.
 #
 # Usage: bash submit_train_hyenadna.sh [smoke|e3|e15|custom]
@@ -52,7 +52,7 @@ JID=$(sbatch --parsable <<JOB_EOF
 #SBATCH --cpus-per-task=10
 #SBATCH --mem-per-cpu=10G
 #SBATCH --gres=gpu:1
-#SBATCH --qos=koolab_shared
+#SBATCH --qos=qos_long
 #SBATCH --partition=gpuq
 #SBATCH --constraint=h100
 #SBATCH --mail-type=FAIL

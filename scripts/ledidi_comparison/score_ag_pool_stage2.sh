@@ -11,7 +11,7 @@
 #SBATCH --partition=gpuq
 #SBATCH --constraint=h100
 #SBATCH --array=0-3
-#SBATCH --exclude=bamgpu20,bamgpu21,bamgpu24,bamgpu25,bamgpu26,bamgpu27,bamgpu28,bamgpu29
+#SBATCH --exclude=gpunode20,gpunode21,gpunode24,gpunode25,gpunode26,gpunode27,gpunode28,gpunode29
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=anonymous@example.com
 
