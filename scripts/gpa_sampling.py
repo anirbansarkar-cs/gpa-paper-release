@@ -152,16 +152,36 @@ class GPAHistory:
 
 
 class DiffusionPopulationAnnealer:
-    """Population Annealing SMC with CFG-guided discrete diffusion mutations.
+    """Annealed SMC over the reward-tilted target pi_beta(x) ∝ p_theta(x) exp(beta r(x)).
+
+    The generator and the oracle enter only through two callables, so any
+    backbone that can resample part of a sequence and any scorer that can rank
+    sequences will work. See `scripts/example_custom_backbone.py` for a runnable
+    minimal implementation of both, and the wrappers under
+    `scripts/*_comparison/` for the MDLM, DiMamba and HyenaDNA versions.
 
     Args:
-        mutate_fn: callable(model, x_clean, labels) -> x_new
-            The existing warm-start CFG sampler. Takes (model, x_clean, labels)
-            and returns mutated sequences (same shape).
-        oracle_fn: callable(sequences_tensor) -> (np.array of scores, np.array of gc)
-            Wraps score_with_oracle(). Takes index tensor, returns (scores, gc).
-        model: The diffusion model (passed to mutate_fn).
+        mutate_fn: callable(model, x_clean, labels, branch_factor=1, **kwargs) -> x_new
+            The generator-defined mutation proposal. `x_clean` is an (B, L) long
+            tensor of token indices (A=0, C=1, G=2, T=3); `labels` is (B, 1) and
+            may be ignored by unconditional models. Returns (B, L) when
+            branch_factor == 1, or (K, B, L) with K independent proposals per
+            parent when branch_factor > 1. For masked diffusion this is
+            partial-corruption + re-denoise; for autoregressive backbones it is
+            partial-context resampling.
+        oracle_fn: callable(sequences_tensor) -> (scores, gc)
+            Takes an (B, L) index tensor, returns two float arrays of length B:
+            the reward used for the SMC tilt, and the per-sequence GC fraction
+            (used only for reporting and the optional GC controls).
+        model: Passed through to mutate_fn as its first argument. Wrappers that
+            hold the model internally ignore it; pass None in that case.
         device: torch device.
+        fitness_fn: optional callable(raw_scores) -> fitness, to reshape the
+            reward (e.g. adding an off-target penalty) without touching the oracle.
+        mutate_fn_factory: optional callable(nf, guidance_weight=None, eta=None)
+            -> mutate_fn. Required only for the annealing schedules that vary the
+            mask fraction or DPS strength during the run (`nf_start`/`nf_end`,
+            `eta_start`/`eta_end`) and for rejuvenation.
     """
 
     def __init__(self, mutate_fn: Callable, oracle_fn: Callable,
