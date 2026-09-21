@@ -20,6 +20,7 @@ built by build_hyenadna_labels.py.
 from __future__ import annotations
 
 import json
+import os
 import sys
 from pathlib import Path
 from typing import List, Union
@@ -28,7 +29,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-_CTRLDNA_SRC = "${HOME}/Ctrl-DNA/ctrl_dna"
+_CTRLDNA_SRC = os.path.expandvars("${HOME}/Ctrl-DNA/ctrl_dna")
 if _CTRLDNA_SRC not in sys.path:
     sys.path.insert(0, _CTRLDNA_SRC)
 

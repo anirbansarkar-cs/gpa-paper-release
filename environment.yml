@@ -1,4 +1,4 @@
-name: d3-old
+name: gpa
 channels:
   - nvidia/label/cuda-11.8.0
   - defaults

@@ -18,7 +18,7 @@ import numpy as np
 import pandas as pd
 import torch
 
-sys.path.insert(0, '${GPA_REPO_ROOT}')
+sys.path.insert(0, os.path.expandvars('${GPA_REPO_ROOT}'))
 from scripts.k562_mdlm_gpa.k562_oracle import load_k562_oracle, K562Oracle
 
 import h5py
@@ -28,10 +28,10 @@ from ledidi import Ledidi
 # =============================================================================
 # Config
 # =============================================================================
-ORACLE_CKPT = '${GPA_REPO_ROOT}/model_zoo/lentimpra/oracle_models/best_model-epoch=24-val_pearson=0.814.ckpt'
-ISM_CSV = '${GPA_REPO_ROOT}/results/ism_high_oracle_scored.csv'
-GPA_SEED_H5 = '${GPA_REPO_ROOT}/results/k562_mdlm_gpa/single_seed_299823.h5'
-OUTPUT_DIR = '${GPA_REPO_ROOT}/results/ledidi_comparison'
+ORACLE_CKPT = os.path.expandvars('${GPA_REPO_ROOT}/model_zoo/lentimpra/oracle_models/best_model-epoch=24-val_pearson=0.814.ckpt')
+ISM_CSV = os.path.expandvars('${GPA_REPO_ROOT}/results/ism_high_oracle_scored.csv')
+GPA_SEED_H5 = os.path.expandvars('${GPA_REPO_ROOT}/results/k562_mdlm_gpa/single_seed_299823.h5')
+OUTPUT_DIR = os.path.expandvars('${GPA_REPO_ROOT}/results/ledidi_comparison')
 
 BASES = {'A': 0, 'C': 1, 'G': 2, 'T': 3}
 IDX_TO_BASE = {0: 'A', 1: 'C', 2: 'G', 3: 'T'}
@@ -429,6 +429,10 @@ def run_ledidi_on_seeds(seeds_df, oracle_wrapper, device, args):
 def parse_args():
     p = argparse.ArgumentParser(description='LEDIDI baseline on K562 LentiMPRA')
     p.add_argument('--oracle_ckpt', default=ORACLE_CKPT)
+    p.add_argument('--oracle_type', choices=['legnet', 'alphagenome_torch'],
+                   default='legnet',
+                   help='legnet = LegNet K562 (default); alphagenome_torch = '
+                        'differentiable NEW torch stage2 AG (needs gpa_torchag env)')
     p.add_argument('--ism_csv', default=ISM_CSV)
     p.add_argument('--gpa_seed_h5', default=GPA_SEED_H5)
     p.add_argument('--output_dir', default=OUTPUT_DIR)
@@ -473,12 +477,21 @@ def parse_args():
     p.add_argument('--early_stop', type=int, default=DEFAULT_EARLY_STOP)
     p.add_argument('--seed_type', choices=['natural', 'random', 'both'],
                    default='both', help='Which ISM seed types to run (only for --seed_mode ism)')
+    p.add_argument('--rng_seed', type=int, default=None,
+                   help='RNG seed for Gumbel-softmax sampling (torch+numpy+cuda). '
+                        'Set to different values for independent multi-seed runs; '
+                        'None keeps torch default (legacy behavior).')
     return p.parse_args()
 
 
 def main():
     args = parse_args()
     os.makedirs(args.output_dir, exist_ok=True)
+    if args.rng_seed is not None:
+        np.random.seed(args.rng_seed)
+        torch.manual_seed(args.rng_seed)
+        torch.cuda.manual_seed_all(args.rng_seed)
+        print(f"  RNG seed: {args.rng_seed}")
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     print("=" * 72)
@@ -496,10 +509,19 @@ def main():
     print(f"  Device: {device}")
 
     # Load oracle
-    print("\nLoading K562 LegNet oracle...")
-    legnet_model = load_k562_oracle(args.oracle_ckpt, device=str(device))
-    k562_oracle = K562Oracle(legnet_model, device=str(device))
-    oracle_wrapper = LedidiOracleWrapper(k562_oracle).to(device)
+    if args.oracle_type == 'alphagenome_torch':
+        from scripts.k562_mdlm_gpa.k562_oracle import TorchAGOracle
+        print("\nLoading NEW torch stage2 AG oracle (alphagenome_torch)...")
+        base_oracle = TorchAGOracle(device=str(device), cell="k562")
+        # freeze the AG backbone so LEDIDI only optimizes the input edits
+        for p in base_oracle.model.parameters():
+            p.requires_grad_(False)
+    else:
+        print("\nLoading K562 LegNet oracle...")
+        legnet_model = load_k562_oracle(args.oracle_ckpt, device=str(device))
+        base_oracle = K562Oracle(legnet_model, device=str(device))
+    # LedidiOracleWrapper calls base_oracle.dps_forward (present on both oracles)
+    oracle_wrapper = LedidiOracleWrapper(base_oracle).to(device)
     oracle_wrapper.eval()
     for param in oracle_wrapper.parameters():
         param.requires_grad = False

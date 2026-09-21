@@ -103,18 +103,40 @@ def parse_args():
                              "0 = disabled. When >0, maintains a streaming top-N "
                              "archive by per-seq specificity (target − max off-target) "
                              "across eval checkpoints; saved to "
-                             "gpa_output_mingap_filtered.h5. Requires "
+                             "gpa_output_mingap_archive.h5. Requires "
                              "--eval_checkpoint_interval > 0 and split-oracle eval ckpt.")
     parser.add_argument("--perstep_archive_top_k", type=int, default=0,
                         help="Per-step top-K accumulated archive (design B): at "
                              "every eval checkpoint, take top-K of that step's "
                              "population by specificity, accumulate across all "
                              "checkpoints with no eviction. Final pool size ≈ "
-                             "T_ckpt × K. Saved to gpa_output_perstep_filtered.h5. "
+                             "T_ckpt × K. Saved to gpa_output_perstep_archive.h5. "
                              "0 = disabled. Same prerequisites as mingap_archive_size.")
     parser.add_argument("--archive_threshold", type=float, default=None,
                         help="Eval-oracle threshold; sequences exceeding this are "
-                             "saved per step to gpa_output_filtered.h5 (None=disabled)")
+                             "saved per step to gpa_output_archive.h5 (None=disabled)")
+    parser.add_argument("--budget_archive_size", type=int, default=0,
+                        help="Option B streaming archive capacity. 0 = disabled. "
+                             "When >0, maintains a capped pool ranked by "
+                             "rank(eval_score) + rank(3mer_corr_with_ref) across "
+                             "eval checkpoints with online eviction. Saved to "
+                             "gpa_output_budget_archive.h5. Requires "
+                             "--eval_checkpoint_interval > 0 and --budget_archive_ref_kmer_npz.")
+    parser.add_argument("--budget_archive_ref_kmer_npz", type=str, default=None,
+                        help="Path to NPZ with a kmer-count dict (k-mer string -> count). "
+                             "Used as the reference 3-mer profile for budget archive ranking. "
+                             "Default: results/rerd_comparison/drakes_protocol/_ref_cache/highexp_999.npz")
+    parser.add_argument("--budget_archive_ref_kmer_key", type=str, default="kmers",
+                        help="Top-level key in the NPZ for the k-mer dict. "
+                             "'kmers' for the GPA Table 2 highexp_999.npz format; "
+                             "'kmer3_counts' for the DNA-CRAFT dnacraft_ref_{Cell}.npz format.")
+    parser.add_argument("--budget_archive_use_appll", action="store_true",
+                        help="Option C: add rank(App-LL) to budget archive eviction signal. "
+                             "Requires MDLM backbone (already loaded for sampling). "
+                             "Adds n_samples MDLM forward passes per particle per eval ckpt.")
+    parser.add_argument("--budget_archive_appll_samples", type=int, default=3,
+                        help="Number of t-samples for in-loop App-LL MC estimate (Option C). "
+                             "More = tighter estimate but slower. Default 3.")
     parser.add_argument("--eval_checkpoint_interval", type=int, default=0,
                         help="Score with eval oracle every N GPA steps (0=disabled)")
     parser.add_argument("--max_delta_beta", type=float, default=0.0,
@@ -126,7 +148,8 @@ def parse_args():
                         help="Fraction of positions to mask per mutation")
     parser.add_argument("--mutation_batch_size", type=int, default=128)
     parser.add_argument("--steps", type=int, default=None,
-                        help="Number of denoising steps per mutation (default: 1)")
+                        help="Number of denoising steps per mutation "
+                             "(default: 1)")
 
     # DPS parameters
     parser.add_argument("--use_dps", action="store_true",
@@ -287,6 +310,9 @@ def parse_args():
 
     # Diagnostics
     parser.add_argument("--diversity_subsample", type=int, default=500)
+    parser.add_argument("--diversity_lambda", type=float, default=0.0,
+                        help="Population-conformity penalty weight (0=off). When >0, "
+                             "subtracts λ*conformity from fitness in the SMC loop.")
 
     # Reproducibility
     parser.add_argument("--seed", type=int, default=None,
@@ -457,7 +483,7 @@ def main():
     print(f"  Output:           {args.output_dir}")
     print("=" * 72)
 
-    # ---- Load MDLM diffusion backbone ----
+    # ---- Load diffusion backbone ----
     print("\n[Model] Loading MDLM diffusion model...")
     mdlm = load_mdlm(args.mdlm_checkpoint, svdd_dir, device)
     print(f"  Loaded: {args.mdlm_checkpoint}")
@@ -501,7 +527,7 @@ def main():
 
     # ---- Build mutation function ----
     def _build_mutator(nf, use_dps):
-        """Build MDLM mutator for given noise_fraction and DPS setting."""
+        """Build mutator for given noise_fraction and DPS setting."""
         if use_dps:
             base_kwargs = dict(
                 noise_fraction=nf, eta=args.dps_eta, tau_start=args.dps_tau,
@@ -633,6 +659,28 @@ def main():
         ref_kmer_profile = _load_gosai_ref_kmer_profile(
             gosai_csv, target_cell=kmer_cell, top_frac=args.kmer_top_frac, k=3)
 
+    # ---- Load budget archive reference 3-mer profile (Option B) ----
+    budget_archive_ref_kmer = None
+    if args.budget_archive_size > 0:
+        from itertools import product as _ip
+        ref_npz_path = os.path.expandvars(args.budget_archive_ref_kmer_npz
+                        or "${GPA_REPO_ROOT}/results/"
+                           "rerd_comparison/drakes_protocol/_ref_cache/highexp_999.npz")
+        ref_npz = np.load(ref_npz_path, allow_pickle=True)
+        ref_key = args.budget_archive_ref_kmer_key
+        if ref_key not in ref_npz.files:
+            raise KeyError(
+                f"Reference NPZ {ref_npz_path} has keys {list(ref_npz.files)}; "
+                f"--budget_archive_ref_kmer_key={ref_key!r} not present.")
+        ref_dict = ref_npz[ref_key].item()
+        _kmer_keys = [''.join(p) for p in _ip('ACGT', repeat=3)]
+        budget_archive_ref_kmer = np.array(
+            [ref_dict.get(k, 0.0) for k in _kmer_keys], dtype=np.float64)
+        print(f"\n[budget_archive] loaded reference 3-mer profile from {ref_npz_path}")
+        print(f"  ref key: {ref_key!r}  shape: {budget_archive_ref_kmer.shape}  "
+              f"sum: {budget_archive_ref_kmer.sum():.1f}  "
+              f"capacity: {args.budget_archive_size}")
+
     # ---- Run GPA ----
     gpa = DiffusionPopulationAnnealer(
         mutate_fn, oracle_fn, model=None, device=device,
@@ -658,10 +706,11 @@ def main():
         pareto_edit_fitness=args.pareto_edit_fitness,
         hc_kmer_weight=args.hc_kmer_weight,
         ref_kmer_profile=ref_kmer_profile,
+        diversity_lambda=args.diversity_lambda,
     )
     (population, oracle_scores, log_weights, history,
      best_population, best_oracle_scores,
-     pool_population, best_eval_scores) = gpa.run(
+     best_eval_population, best_eval_scores) = gpa.run(
         population, labels,
         max_beta=args.max_beta,
         ess_threshold=args.ess_threshold,
@@ -689,6 +738,11 @@ def main():
         eval_oracle_all_cells_fn=eval_oracle_all_cells_fn,
         mingap_target_cell=args.target_cell,
         max_delta_beta=args.max_delta_beta,
+        budget_archive_size=args.budget_archive_size,
+        budget_archive_ref_kmer=budget_archive_ref_kmer,
+        budget_archive_use_appll=args.budget_archive_use_appll,
+        budget_archive_mdlm_model=(mdlm if args.budget_archive_use_appll else None),
+        budget_archive_appll_samples=args.budget_archive_appll_samples,
     )
 
     # ---- Score all cell types for final population ----
@@ -773,16 +827,16 @@ def main():
                     f.create_dataset(f"oracle_{cell}_eval", data=scores, compression="gzip")
 
     # Best eval-oracle population (from eval checkpointing)
-    if pool_population is not None:
-        best_eval_h5 = output_dir / "gpa_output_pool.h5"
+    if best_eval_population is not None:
+        best_eval_h5 = output_dir / "gpa_output_best_eval.h5"
         print(f"[Save] Writing {best_eval_h5} (best eval checkpoint)")
-        best_eval_indices_np = pool_population.numpy()
+        best_eval_indices_np = best_eval_population.numpy()
         best_eval_onehot = np.eye(4, dtype=np.float32)[best_eval_indices_np].transpose(0, 2, 1)
         best_eval_gc = ((best_eval_indices_np == 1) | (best_eval_indices_np == 2)).mean(axis=1).astype(np.float32)
         # Score best-eval population with both oracles
         print("  Scoring best-eval population...")
-        best_eval_cell_scores_ft = oracle.score_all_cells(pool_population.to(device))
-        best_eval_cell_scores_eval = eval_oracle.score_all_cells(pool_population.to(device))
+        best_eval_cell_scores_ft = oracle.score_all_cells(best_eval_population.to(device))
+        best_eval_cell_scores_eval = eval_oracle.score_all_cells(best_eval_population.to(device))
         for cell, scores in best_eval_cell_scores_eval.items():
             print(f"  {cell} (eval): mean={scores.mean():.3f}, max={scores.max():.3f}")
         with h5py.File(str(best_eval_h5), "w") as f:
@@ -800,7 +854,7 @@ def main():
     if (args.perstep_archive_top_k > 0
             and history.perstep_archive_seqs is not None
             and len(history.perstep_archive_seqs) > 0):
-        perstep_h5 = output_dir / "gpa_output_perstep_filtered.h5"
+        perstep_h5 = output_dir / "gpa_output_perstep_archive.h5"
         b_seqs = history.perstep_archive_seqs
         b_specs = history.perstep_archive_specs
         b_cells = history.perstep_archive_cell_scores
@@ -839,7 +893,7 @@ def main():
     if (args.mingap_archive_size > 0
             and history.mingap_archive_seqs is not None
             and len(history.mingap_archive_seqs) > 0):
-        mingap_h5 = output_dir / "gpa_output_mingap_filtered.h5"
+        mingap_h5 = output_dir / "gpa_output_mingap_archive.h5"
         a_seqs = history.mingap_archive_seqs
         a_specs = history.mingap_archive_specs
         a_cells = history.mingap_archive_cell_scores
@@ -871,9 +925,58 @@ def main():
             f.attrs["actual_size"] = int(len(a_seqs))
             f.attrs["admission_rule"] = "spec ≥ floor; capacity-bounded"
 
+    # Budget-capped streaming archive (Option B: oracle+3mer rank-sum eviction)
+    if (args.budget_archive_size > 0
+            and history.budget_archive_seqs is not None
+            and len(history.budget_archive_seqs) > 0):
+        budget_h5 = output_dir / "gpa_output_budget_archive.h5"
+        b_seqs = history.budget_archive_seqs
+        b_eval = history.budget_archive_eval
+        b_kmer = history.budget_archive_kmer_corr
+        b_steps = history.budget_archive_steps
+        b_onehot = np.eye(4, dtype=np.float32)[b_seqs].transpose(0, 2, 1)
+        b_gc = ((b_seqs == 1) | (b_seqs == 2)).mean(axis=1).astype(np.float32)
+        print(f"\n[Save] Writing {budget_h5} "
+              f"({len(b_seqs)}/{args.budget_archive_size} seqs, "
+              f"eval range=[{b_eval.min():.3f}, {b_eval.max():.3f}], "
+              f"kmer_corr range=[{b_kmer.min():.3f}, {b_kmer.max():.3f}])")
+        # Score all 3 cells with eval oracle so downstream
+        # score_dnacraft_protocol.py (and friends) can do by_pool_composite
+        # selection without a separate re-scoring step.
+        print("  Scoring budget-archive pool with eval oracle (3 cells)...")
+        b_pop = torch.from_numpy(b_seqs.astype(np.int64)).long()
+        budget_cell_scores_eval = eval_oracle.score_all_cells(b_pop.to(device))
+        with h5py.File(str(budget_h5), "w") as f:
+            f.create_dataset("indices", data=b_seqs, compression="gzip")
+            f.create_dataset("arr_0", data=b_onehot, compression="gzip")
+            f.create_dataset("oracle_preds", data=b_eval.astype(np.float32),
+                             compression="gzip")
+            f.create_dataset("gc_fractions", data=b_gc, compression="gzip")
+            f.create_dataset("kmer_corr_admit",
+                             data=b_kmer.astype(np.float32),
+                             compression="gzip")
+            f.create_dataset("step", data=b_steps.astype(np.int32),
+                             compression="gzip")
+            for cell, scores in budget_cell_scores_eval.items():
+                f.create_dataset(f"oracle_{cell}_eval",
+                                 data=np.asarray(scores, dtype=np.float32),
+                                 compression="gzip")
+            if history.budget_archive_app_ll is not None:
+                f.create_dataset(
+                    "app_ll_admit",
+                    data=history.budget_archive_app_ll.astype(np.float32),
+                    compression="gzip")
+            f.attrs["target_cell"] = args.target_cell
+            f.attrs["capacity"] = args.budget_archive_size
+            f.attrs["actual_size"] = int(len(b_seqs))
+            f.attrs["admission_rule"] = (
+                "rank(eval) + rank(3mer_corr) + rank(app_ll); capacity-bounded eviction"
+                if history.budget_archive_app_ll is not None
+                else "rank(eval) + rank(3mer_corr_with_ref); capacity-bounded eviction")
+
     # Per-step archive (sequences exceeding eval-oracle threshold during sampling)
     if args.archive_threshold is not None and len(history.archive_seqs) > 0:
-        archive_h5 = output_dir / "gpa_output_filtered.h5"
+        archive_h5 = output_dir / "gpa_output_archive.h5"
         # Concatenate per-step archive arrays
         all_seqs = np.concatenate(history.archive_seqs, axis=0)        # (K, L)
         all_scores = np.concatenate(history.archive_scores, axis=0)    # (K,)
@@ -937,7 +1040,7 @@ def main():
         history_dict["best_eval_checkpoint_mean"] = max(history.eval_checkpoint_means)
         history_dict["best_eval_checkpoint_step"] = history.eval_checkpoint_steps[
             int(np.argmax(history.eval_checkpoint_means))]
-    if pool_population is not None and best_eval_scores is not None:
+    if best_eval_population is not None and best_eval_scores is not None:
         tc = args.target_cell
         history_dict["best_eval_oracle_mean"] = float(best_eval_scores.mean())
 

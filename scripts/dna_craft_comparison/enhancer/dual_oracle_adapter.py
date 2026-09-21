@@ -19,7 +19,7 @@ import numpy as np
 import pandas as pd
 import torch
 
-CTRL_DNA_SRC = Path("${HOME}/Ctrl-DNA/ctrl_dna/src")
+CTRL_DNA_SRC = Path(os.path.expandvars("${HOME}/Ctrl-DNA/ctrl_dna/src"))
 if str(CTRL_DNA_SRC) not in sys.path:
     sys.path.insert(0, str(CTRL_DNA_SRC))
 from reglm.regression import EnformerModel, SeqDataset  # noqa: E402
@@ -170,6 +170,10 @@ class SplitModelOracle:
         device = soft_onehot.device
         x = soft_onehot.permute(0, 2, 1)                    # (B, L, 4)
         self.models[self.target_cell].to(device)
+        # The DiMamba backbone emits bf16 soft one-hots while the oracle trunks are
+        # fp32, so conv1d raises on the dtype mismatch. Cast to the oracle's dtype;
+        # this is differentiable and a no-op for fp32 backbones (HyenaDNA, MDLM).
+        x = x.to(next(self.models[self.target_cell].parameters()).dtype)
         r_target = self.models[self.target_cell](x, return_logits=True).squeeze(-1)
         if self.penalty_weight == 0.0 or not self.penalty_cells:
             return r_target

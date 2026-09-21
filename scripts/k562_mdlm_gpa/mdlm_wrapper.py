@@ -42,23 +42,26 @@ def _register_resolvers():
     _safe_register('div_up', lambda x, y: (x + y - 1) // y)
 
 
-def load_mdlm_lentimpra(checkpoint_path, sgdd_dir, device="cuda"):
-    """Load LentiMPRA-trained MDLM from SGDD checkpoint.
+def load_mdlm_lentimpra(checkpoint_path, sgdd_dir=None, device="cuda"):
+    """Load LentiMPRA-trained MDLM.
 
     Args:
         checkpoint_path: Path to best.ckpt (LentiMPRA MDLM).
-        sgdd_dir: Path to SGDD repo root.
+        sgdd_dir: Deprecated/ignored. The original SGDD pipeline was deleted in
+            the 2026-06 home cleanup; the diffusion_lentimpra module now lives in
+            the in-repo package scripts/k562_mdlm_gpa/mdlm_lentimpra/ (faithful
+            reconstruction from DRAKES diffusion_gosai). Kept in the signature so
+            existing callers passing SGDD_DIR still work.
         device: Device to load model on.
 
     Returns:
         Diffusion model instance (eval mode, on device).
     """
-    # Add SGDD paths for diffusion_lentimpra imports
-    drakes_dir = os.path.join(sgdd_dir, "applications", "drakes_dna")
-    if drakes_dir not in sys.path:
-        sys.path.insert(0, drakes_dir)
-    if sgdd_dir not in sys.path:
-        sys.path.insert(0, sgdd_dir)
+    # In-repo reconstructed package (replaces deleted SGDD applications/drakes_dna).
+    pkg_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                           "mdlm_lentimpra")
+    if pkg_dir not in sys.path:
+        sys.path.insert(0, pkg_dir)
 
     from omegaconf import OmegaConf
     import diffusion_lentimpra

@@ -201,3 +201,72 @@ class CascadeOracle:
     def dps_forward(self, soft_onehot):
         """DPS through the fast oracle (LegNet is differentiable, AG is not)."""
         return self.fast.dps_forward(soft_onehot)
+
+
+# LentiMPRA 281bp training construct (per torch ckpt construct_config):
+#   A5(15) + insert_core(200) + A3(15) + promoter(36) + barcode(15) = 281
+_AG_PROMOTER = "TCCATTATATACCCTCTAGTGTCGGTTCACGCAATG"
+_AG_BARCODE = "AGAGACTGAGGCCAC"
+_AG_TORCH_CKPTS = {
+    "k562":  os.path.expandvars("${GPA_SHARED_ROOT}/models/alphagenome_encoder/torch/mpra_K562/finetuned_encoder.pt"),
+    "hepg2": os.path.expandvars("${GPA_SHARED_ROOT}/models/alphagenome_encoder/torch/mpra_HepG2/finetuned_encoder.pt"),
+    "wtc11": os.path.expandvars("${GPA_SHARED_ROOT}/models/alphagenome_encoder/torch/mpra_WTC11/finetuned_encoder.pt"),
+}
+
+
+class TorchAGOracle:
+    """Differentiable torch AG (stage2 finetuned) oracle, K562Oracle-compatible:
+      - score(seq_tensor (N,200) int) -> (scores_np, gc_np)
+      - dps_forward(soft_onehot (B,4,200) float, grad) -> (B,) reward (grad)
+    Assembles the 281bp construct channels-LAST in ACGT order and calls
+    EncoderMPRAModel.forward (verified to match predict_sequences exactly, and
+    gradients flow to the editable core). EncoderMPRAModel is imported lazily so
+    this module still imports in envs without alphagenome_encoder_ft (e.g. d3_cuda118).
+    Channel order A=0,C=1,G=2,T=3 matches both the diffusion bio encoding and the
+    AG one-hot, so no channel swap is needed.
+    """
+
+    _BASES = "ACGT"
+
+    def __init__(self, device="cuda", cell="k562"):
+        from alphagenome_encoder_ft import EncoderMPRAModel  # lazy
+        self.device = device
+        ckpt = _AG_TORCH_CKPTS[cell]
+        print(f"[Oracle] Loading torch AG stage2 ({cell}): {ckpt}")
+        self.model = EncoderMPRAModel.from_checkpoint(ckpt, device=device)
+        self.model.eval()
+
+        def _oh(s):
+            t = torch.zeros(1, len(s), 4, dtype=torch.float32)
+            for j, ch in enumerate(s):
+                t[0, j, self._BASES.index(ch)] = 1.0
+            return t.to(device)
+        self._a5 = _oh(ADAPTER_5P)
+        self._a3 = _oh(ADAPTER_3P)
+        self._prom = _oh(_AG_PROMOTER)
+        self._bar = _oh(_AG_BARCODE)
+
+    def _assemble(self, core_bl):
+        """core_bl: (B,200,4) channels-last -> (B,281,4) full construct."""
+        B = core_bl.shape[0]
+        return torch.cat([
+            self._a5.expand(B, -1, -1), core_bl, self._a3.expand(B, -1, -1),
+            self._prom.expand(B, -1, -1), self._bar.expand(B, -1, -1)], dim=1)
+
+    def score(self, sequences_tensor, batch_size=256):
+        seq = sequences_tensor.to(self.device).long()
+        gc = ((seq == 1) | (seq == 2)).float().mean(dim=1).cpu().numpy()
+        oh = F.one_hot(seq, 4).float()              # (N,200,4) ACGT channels-last
+        out = []
+        for s in range(0, oh.shape[0], batch_size):
+            with torch.no_grad():
+                p = self.model.forward(self._assemble(oh[s:s + batch_size]))
+            out.append(p.reshape(-1).detach().cpu().numpy())
+        return np.concatenate(out), gc
+
+    def dps_forward(self, soft_onehot):
+        """soft_onehot: (B,4,200) channels-first float (Gumbel relaxation), grad.
+        Flanks are detached constants so grad flows only through the core."""
+        core_bl = soft_onehot.permute(0, 2, 1)      # (B,4,200) -> (B,200,4)
+        preds = self.model.forward(self._assemble(core_bl))
+        return preds.reshape(-1)

@@ -137,7 +137,7 @@ def parse_args():
                         "proposal (Del Moral–Doucet–Jasra 2006 §3.1). "
                         "Active only when --use_dps is also set.")
 
-    # Archive: collect per-step seqs exceeding target threshold, save as gpa_output_filtered.h5
+    # Archive: collect per-step seqs exceeding target threshold, save as gpa_output_archive.h5
     p.add_argument("--archive_threshold", type=float, default=None,
                    help="Per-step archive threshold on target score. None=off.")
 
@@ -302,7 +302,7 @@ def main():
     # run() returns an 8-tuple (see scripts/gpa_sampling.py:972).
     (final_pop, final_scores, log_weights, history,
      best_population, best_oracle_scores,
-     pool_population, best_eval_scores) = result
+     best_eval_population, best_eval_scores) = result
 
     def _save_pool(tag, pop, target_scores):
         if pop is None:
@@ -339,7 +339,7 @@ def main():
     stats["final"] = _save_pool("final", final_pop, final_scores)
     stats["best"] = _save_pool("best", best_population, best_oracle_scores)
     # per rule: authoritative reported pool is best_eval
-    stats["best_eval"] = _save_pool("best_eval", pool_population, best_eval_scores)
+    stats["best_eval"] = _save_pool("best_eval", best_eval_population, best_eval_scores)
 
     # Archive save: concat all per-step archive shards and persist to h5
     if args.archive_threshold is not None and len(history.archive_seqs) > 0:
@@ -350,7 +350,7 @@ def main():
         # Re-score all 3 cells on the archive (so eval doesn't have to)
         _, arch_gc = oracle.score(arch_tensor)
         all_preds = oracle._last_all_preds
-        h5_path = out_dir / "gpa_output_filtered.h5"
+        h5_path = out_dir / "gpa_output_archive.h5"
         with h5py.File(h5_path, "w") as f:
             f.create_dataset("sequences", data=arch_seqs.astype(np.int8))
             f.create_dataset("target_scores", data=arch_scores.astype(np.float32))

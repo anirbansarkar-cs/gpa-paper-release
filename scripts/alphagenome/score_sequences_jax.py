@@ -30,14 +30,14 @@ from pathlib import Path
 import numpy as np
 
 JAX_CHECKPOINTS = {
-    "k562":  Path("${GPA_SHARED_ROOT}/models/alphagenome_encoder/jax/mpra-K562-optimal/stage1"),
-    "hepg2": Path("${GPA_SHARED_ROOT}/models/alphagenome_encoder/jax/mpra-HepG2-optimal/stage1"),
-    "wtc11": Path("${GPA_SHARED_ROOT}/models/alphagenome_encoder/jax/mpra-WTC11-optimal/stage1"),
+    "k562":  Path(os.path.expandvars("${GPA_SHARED_ROOT}/models/alphagenome_encoder/jax/mpra-K562-optimal/stage1")),
+    "hepg2": Path(os.path.expandvars("${GPA_SHARED_ROOT}/models/alphagenome_encoder/jax/mpra-HepG2-optimal/stage1")),
+    "wtc11": Path(os.path.expandvars("${GPA_SHARED_ROOT}/models/alphagenome_encoder/jax/mpra-WTC11-optimal/stage1")),
 }
 JAX_CHECKPOINTS_STAGE2 = {
-    "k562":  Path("${GPA_SHARED_ROOT}/models/alphagenome_encoder/jax/mpra-K562-optimal/stage2"),
-    "hepg2": Path("${GPA_SHARED_ROOT}/models/alphagenome_encoder/jax/mpra-HepG2-optimal/stage2"),
-    "wtc11": Path("${GPA_SHARED_ROOT}/models/alphagenome_encoder/jax/mpra-WTC11-optimal/stage2"),
+    "k562":  Path(os.path.expandvars("${GPA_SHARED_ROOT}/models/alphagenome_encoder/jax/mpra-K562-optimal/stage2")),
+    "hepg2": Path(os.path.expandvars("${GPA_SHARED_ROOT}/models/alphagenome_encoder/jax/mpra-HepG2-optimal/stage2")),
+    "wtc11": Path(os.path.expandvars("${GPA_SHARED_ROOT}/models/alphagenome_encoder/jax/mpra-WTC11-optimal/stage2")),
 }
 
 ADAPTER_5 = "AGGACCGGATCAACT"
@@ -157,7 +157,7 @@ def score(oracle, onehot: np.ndarray, batch_size: int = 64) -> np.ndarray:
 if __name__ == "__main__":
     # Smoke test: load each cell, score 32 seqs from one GPA pool, print scales.
     import h5py
-    h5p = "${GPA_REPO_ROOT}/results/k562_mdlm_gpa/run_v13_nodps_bf10_b1k_cap10_ism50178/gpa_output_pool.h5"
+    h5p = os.path.expandvars("${GPA_REPO_ROOT}/results/k562_mdlm_gpa/run_v13_nodps_bf10_b1k_cap10_ism50178/gpa_output_best_eval.h5")
     with h5py.File(h5p, "r") as f:
         idx = f["indices"][:32]
     oh = indices_to_onehot(idx)

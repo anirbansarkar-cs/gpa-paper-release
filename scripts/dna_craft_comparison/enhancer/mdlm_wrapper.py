@@ -22,6 +22,7 @@ and will succeed once `import mamba_ssm, causal_conv1d` works inside
 from __future__ import annotations
 
 from pathlib import Path
+import os
 import sys
 from typing import Optional
 
@@ -29,7 +30,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-MDLM_ROOT = Path("${HOME}/mdlm")
+MDLM_ROOT = Path(os.path.expandvars("${HOME}/mdlm"))
 if str(MDLM_ROOT) not in sys.path:
     sys.path.insert(0, str(MDLM_ROOT))
 

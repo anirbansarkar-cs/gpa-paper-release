@@ -72,9 +72,11 @@ def parse_args():
 
     # Oracle type
     parser.add_argument("--oracle_type", default="legnet",
-                        choices=["legnet", "alphagenome"],
-                        help="Fitness oracle: legnet (LegNet CNN, supports DPS) or "
-                             "alphagenome (AG JAX, GPA-only)")
+                        choices=["legnet", "alphagenome", "alphagenome_torch"],
+                        help="Fitness oracle: legnet (LegNet CNN, supports DPS), "
+                             "alphagenome (AG JAX socket, noDPS), or "
+                             "alphagenome_torch (torch AG stage2, in-process, "
+                             "DIFFERENTIABLE -> supports DPS)")
     parser.add_argument("--ag_socket_path", default=None,
                         help="Unix socket for AG oracle server (auto-generated if None)")
     parser.add_argument("--ag_server_batch_size", type=int, default=64,
@@ -261,6 +263,10 @@ def parse_args():
                         help="AG score threshold: archive any sequence exceeding this at each "
                              "eval checkpoint step (requires --eval_ag; use with "
                              "--eval_checkpoint_interval 1 to catch transient sequences)")
+    parser.add_argument("--topk_ag_size", type=int, default=0,
+                        help="Capacity of the top-K-by-AG evicting pool (0=disabled). "
+                             "Keeps the highest-AG sequences seen at any eval checkpoint, "
+                             "deduped by sequence, with online eviction.")
     parser.add_argument("--nf_boost_delta", type=float, default=0.0,
                         help="Adaptive NF boost: increase NF by this amount on eval plateau (0=disabled)")
     parser.add_argument("--nf_boost_max", type=float, default=0.0,
@@ -375,11 +381,11 @@ def start_ag_server(socket_path, batch_size=64):
     """
     # AG_ENV env var picks the conda env: 'alphagenome' (default, jaxlib 0.9 +
     # cuDNN 9, needs driver >=555) or 'alphagenome_oldcudnn' (jaxlib 0.4.34 +
-    # cuDNN 8.9.7, works on driver >=520 — covers the gpunode25/27/etc fleet).
+    # cuDNN 8.9.7, works on driver >=520 — covers our GPU fleet).
     ag_env = os.environ.get("AG_ENV", "alphagenome")
-    ag_python = f"${HOME}/.conda/envs/{ag_env}/bin/python"
+    ag_python = os.path.expandvars(f"${CONDA_ENV_ROOT}/{ag_env}/bin/python")
     server_script = str(Path(__file__).parent / "ag_oracle_server.py")
-    cuda_nvcc_dir = (f"${HOME}/.conda/envs/{ag_env}/lib/"
+    cuda_nvcc_dir = os.path.expandvars(f"${CONDA_ENV_ROOT}/{ag_env}/lib/"
                      f"python3.11/site-packages/nvidia/cuda_nvcc")
 
     sub_env = os.environ.copy()
@@ -545,6 +551,15 @@ def main():
         oracle = K562Oracle(lit_oracle, device=device)
         print(f"  Loaded: {args.oracle_checkpoint}")
 
+    elif args.oracle_type == "alphagenome_torch":
+        from scripts.k562_mdlm_gpa.k562_oracle import TorchAGOracle
+        oracle = TorchAGOracle(device=device, cell="k562")
+        # LegNet for cross-oracle scoring at the end (reward-hacking check)
+        if args.oracle_checkpoint:
+            print("\n[Oracle] Loading K562 LegNet for cross-scoring...")
+            legnet_oracle = K562Oracle(load_k562_oracle(args.oracle_checkpoint, device),
+                                       device=device)
+
     elif args.oracle_type == "alphagenome":
         from scripts.k562_mdlm_gpa.ag_oracle_client import AlphaGenomeK562Client
 
@@ -580,8 +595,9 @@ def main():
     print(f"  GC:     mean={test_gc.mean():.3f}")
 
     # ---- Build mutation function ----
-    # DPS mutators need a differentiable oracle (LegNet); for AG, DPS is already off
-    dps_oracle = oracle if args.oracle_type == "legnet" else None
+    # DPS mutators need a differentiable oracle: LegNet or torch-AG (both expose
+    # dps_forward). JAX "alphagenome" is non-differentiable -> DPS already off.
+    dps_oracle = oracle if args.oracle_type in ("legnet", "alphagenome_torch") else None
 
     def _build_mutator(nf, use_dps, eta_override=None):
         if use_dps:
@@ -700,6 +716,19 @@ def main():
                 print(f"\n  [AG Eval] ERROR: {e}", flush=True)
                 n = len(sequences_tensor)
                 return np.full(n, -np.inf)
+    elif args.eval_ag and args.oracle_type in ("alphagenome", "alphagenome_torch"):
+        # AG is already the fitness oracle; reuse it as the eval oracle so the
+        # eval-checkpoint harvest (best_eval + topk_ag cross-step pool) runs.
+        # oracle is AlphaGenomeK562Client/CascadeOracle (jax) or TorchAGOracle.
+        def eval_oracle_fn(sequences_tensor):
+            try:
+                seqs = (sequences_tensor if isinstance(sequences_tensor, torch.Tensor)
+                        else torch.from_numpy(sequences_tensor).long())
+                scores, _ = oracle.score(seqs)
+                return np.asarray(scores, dtype=np.float64)
+            except Exception as e:
+                print(f"\n  [AG Eval/fitness] ERROR: {e}", flush=True)
+                return np.full(len(sequences_tensor), -np.inf)
 
     # ---- Run GPA ----
     gpa = DiffusionPopulationAnnealer(
@@ -730,7 +759,7 @@ def main():
     )
     (population, oracle_scores, log_weights, history,
      best_population, best_oracle_scores,
-     pool_population, best_eval_scores) = gpa.run(
+     best_eval_population, best_eval_scores) = gpa.run(
         population, labels,
         max_beta=args.max_beta,
         ess_threshold=args.ess_threshold,
@@ -754,6 +783,7 @@ def main():
         eval_oracle_fn=eval_oracle_fn,
         eval_checkpoint_interval=args.eval_checkpoint_interval,
         archive_threshold=args.archive_threshold,
+        topk_ag_size=args.topk_ag_size,
         eval_early_stop_patience=args.eval_early_stop_patience,
         nf_boost_delta=args.nf_boost_delta,
         nf_boost_max=args.nf_boost_max,
@@ -811,7 +841,7 @@ def main():
     history_dict["seq_length"] = SEQ_LENGTH
 
     # Add eval checkpoint data to history
-    if pool_population is not None and best_eval_scores is not None:
+    if best_eval_population is not None and best_eval_scores is not None:
         history_dict["eval_checkpoint_means"] = history.eval_checkpoint_means
         history_dict["eval_checkpoint_steps"] = history.eval_checkpoint_steps
         history_dict["best_eval_ag_mean"] = float(best_eval_scores.mean())
@@ -832,11 +862,11 @@ def main():
         print(f"[Save] Lagrangian trajectory: {lag_json}")
 
     # Save best-by-AG-eval population
-    if pool_population is not None and best_eval_scores is not None:
-        best_eval_h5 = output_dir / "gpa_output_pool.h5"
+    if best_eval_population is not None and best_eval_scores is not None:
+        best_eval_h5 = output_dir / "gpa_output_best_eval.h5"
         best_eval_ag_mean = float(best_eval_scores.mean())
         print(f"[Save] Writing {best_eval_h5} (best AG eval mean={best_eval_ag_mean:.4f})")
-        best_eval_indices = pool_population.numpy()
+        best_eval_indices = best_eval_population.numpy()
         best_eval_onehot = np.eye(4, dtype=np.float32)[best_eval_indices].transpose(0, 2, 1)
         best_eval_gc = ((best_eval_indices == 1) | (best_eval_indices == 2)).mean(axis=1).astype(np.float32)
         # Cross-score with LegNet
@@ -867,7 +897,7 @@ def main():
         # Sort by score descending
         order = np.argsort(all_scores)[::-1]
         all_seqs, all_scores, all_steps = all_seqs[order], all_scores[order], all_steps[order]
-        archive_h5 = output_dir / "gpa_output_filtered.h5"
+        archive_h5 = output_dir / "gpa_output_archive.h5"
         with h5py.File(str(archive_h5), "w") as f:
             f.create_dataset("seqs",      data=all_seqs,   compression="gzip")
             f.create_dataset("ag_scores", data=all_scores, compression="gzip")
@@ -877,11 +907,27 @@ def main():
               f"mean={all_scores.mean():.4f} max={all_scores.max():.4f} "
               f"P99={np.percentile(all_scores, 99):.4f} -> {archive_h5}")
 
+    # ---- Top-K-by-AG evicting pool (user's bounded best-AG-across-steps pool) ----
+    if getattr(history, "topk_ag_seqs", None) is not None:
+        tk_seqs = history.topk_ag_seqs            # (cap, L) int
+        tk_scores = history.topk_ag_scores        # (cap,) float
+        tk_onehot = np.eye(4, dtype=np.float32)[tk_seqs].transpose(0, 2, 1)
+        tk_gc = ((tk_seqs == 1) | (tk_seqs == 2)).mean(axis=1).astype(np.float32)
+        topk_h5 = output_dir / "gpa_output_topk_ag.h5"
+        with h5py.File(str(topk_h5), "w") as f:
+            f.create_dataset("arr_0", data=tk_onehot, compression="gzip")
+            f.create_dataset("ag_k562_scores", data=tk_scores, compression="gzip")
+            f.create_dataset("gc_fractions", data=tk_gc, compression="gzip")
+            f.create_dataset("indices", data=tk_seqs, compression="gzip")
+            f.create_dataset("step", data=history.topk_ag_steps, compression="gzip")
+        print(f"[topk_ag] {len(tk_seqs)} seqs | "
+              f"mean={tk_scores.mean():.4f} max={tk_scores.max():.4f} -> {topk_h5}")
+
     # ---- Cross-oracle scoring ----
     ag_mean, ag_max = None, None
     legnet_mean, legnet_max = None, None
 
-    if args.oracle_type == "alphagenome":
+    if args.oracle_type in ("alphagenome", "alphagenome_torch"):
         # oracle_scores ARE AG scores when using AG as fitness
         ag_mean = float(oracle_scores.mean())
         ag_max = float(oracle_scores.max())
@@ -938,7 +984,7 @@ def main():
             if ag_scores_arr is None:
                 ag_csv = output_dir / "ag_k562_scores.csv"
                 ag_cmd = [
-                    "${HOME}/.conda/envs/alphagenome/bin/python",
+                    os.path.expandvars("${CONDA_ENV_ROOT}/alphagenome/bin/python"),
                     "scripts/alphagenome/score_sequences.py",
                     "--input", str(out_h5),
                     "--output", str(ag_csv),

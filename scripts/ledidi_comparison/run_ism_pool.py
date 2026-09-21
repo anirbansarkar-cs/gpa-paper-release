@@ -30,12 +30,12 @@ import numpy as np
 import pandas as pd
 import torch
 
-sys.path.insert(0, "${GPA_REPO_ROOT}")
+sys.path.insert(0, os.path.expandvars("${GPA_REPO_ROOT}"))
 from scripts.k562_mdlm_gpa.k562_oracle import K562Oracle, load_k562_oracle
 
 SEQ_LEN = 200
 BASES = "ACGT"
-DEFAULT_ORACLE = (
+DEFAULT_ORACLE = os.path.expandvars(
     "${GPA_REPO_ROOT}/model_zoo/lentimpra/oracle_models/"
     "best_model-epoch=24-val_pearson=0.814.ckpt"
 )
@@ -189,6 +189,10 @@ def main():
                     help="Directory to write trajectories.csv + meta.json")
     ap.add_argument("--total_steps", type=int, default=115)
     ap.add_argument("--oracle_ckpt", default=DEFAULT_ORACLE)
+    ap.add_argument("--oracle_type", choices=["legnet", "alphagenome_torch"],
+                    default="legnet",
+                    help="legnet = LegNet K562 (default); alphagenome_torch = "
+                         "NEW torch stage2 AG (needs gpa_torchag env)")
     ap.add_argument("--seeds_per_chunk", type=int, default=128,
                     help="Number of seeds processed per inner GPU chunk; "
                          "each chunk evaluates seeds_per_chunk * 600 candidates.")
@@ -205,9 +209,14 @@ def main():
     print(f"[ISM-pool] device={device}  total_steps={args.total_steps}  "
           f"seeds_per_chunk={args.seeds_per_chunk}  inner_batch={args.inner_batch}",
           flush=True)
-    print(f"[ISM-pool] loading oracle {args.oracle_ckpt}", flush=True)
-    lit = load_k562_oracle(args.oracle_ckpt, device=device)
-    oracle = K562Oracle(lit, device=device)
+    if args.oracle_type == "alphagenome_torch":
+        from scripts.k562_mdlm_gpa.k562_oracle import TorchAGOracle
+        print("[ISM-pool] loading NEW torch stage2 AG oracle (alphagenome_torch)", flush=True)
+        oracle = TorchAGOracle(device=device, cell="k562")
+    else:
+        print(f"[ISM-pool] loading oracle {args.oracle_ckpt}", flush=True)
+        lit = load_k562_oracle(args.oracle_ckpt, device=device)
+        oracle = K562Oracle(lit, device=device)
 
     with h5py.File(args.pool, "r") as f:
         seed_pool = f["indices"][:].astype(np.int64)

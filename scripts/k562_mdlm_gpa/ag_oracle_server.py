@@ -31,18 +31,59 @@ import time
 import numpy as np
 
 
+_TORCH_CKPTS = {
+    "k562":  os.path.expandvars("${GPA_SHARED_ROOT}/models/alphagenome_encoder/torch/mpra_K562/finetuned_encoder.pt"),
+    "hepg2": os.path.expandvars("${GPA_SHARED_ROOT}/models/alphagenome_encoder/torch/mpra_HepG2/finetuned_encoder.pt"),
+    "wtc11": os.path.expandvars("${GPA_SHARED_ROOT}/models/alphagenome_encoder/torch/mpra_WTC11/finetuned_encoder.pt"),
+}
+_A5, _A3 = "AGGACCGGATCAACT", "CATTGCGTGAACCGA"   # LentiMPRA library adapters
+_BASES = "ACGT"
+
+
+class TorchAGServerOracle:
+    """Forward-only torch AG (stage2 finetuned) wrapper exposing the same
+    .predict(onehot (N,200,4), mode, batch_size) -> scores interface as the JAX
+    oracle, so score_batch (which builds fwd + RC one-hots) works unchanged.
+    Uses the validated string predict_sequences path (construct_mode=
+    'promoter_barcode' -> 281bp; reproduces 0.877 pearson vs real y_test)."""
+
+    def __init__(self, cell="k562"):
+        import torch
+        from alphagenome_encoder_ft import EncoderMPRAModel
+        self._torch = torch
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        ckpt = _TORCH_CKPTS[cell]
+        print(f"[AG Server] Loading {cell} TORCH stage2 oracle: {ckpt}", flush=True)
+        t0 = time.time()
+        self.model = EncoderMPRAModel.from_checkpoint(ckpt, device=self.device)
+        self.model.eval()
+        print(f"[AG Server] Loaded (torch) in {time.time() - t0:.1f}s", flush=True)
+
+    def predict(self, onehot, mode="core", batch_size=64):
+        # onehot: (N, 200, 4) float; map to core strings, add library adapters.
+        idx = np.asarray(onehot).argmax(axis=-1)               # (N, 200)
+        seqs = [_A5 + "".join(_BASES[i] for i in row) + _A3 for row in idx]
+        out = []
+        for s in range(0, len(seqs), batch_size):
+            with self._torch.no_grad():
+                p = self.model.predict_sequences(
+                    seqs[s:s + batch_size], construct_mode="promoter_barcode")
+            p = p.detach().cpu().numpy() if hasattr(p, "detach") else np.asarray(p)
+            out.append(p.reshape(-1))
+        return np.concatenate(out, axis=0)
+
+
 def load_ag_oracle(batch_size=64):
-    """Load AlphaGenome K562 oracle (JAX).
-
-    Old path ${GPA_SHARED_ROOT}/alphagenome_encoder/ was deleted; the
-    JAX ckpts are now under ${GPA_SHARED_ROOT}/models/alphagenome_encoder/jax/
-    and need a runtime config patch (use_encoder_output flag) — both handled
-    by scripts/alphagenome/score_sequences_jax.load_jax_oracle.
+    """Load AlphaGenome K562 oracle. Backend selected by AG_BACKEND env var:
+    'jax' (default) = JAX stage1/stage2 (AG_STAGE); 'torch' = torch stage2
+    finetuned encoder (forward-only eval). Both expose .predict(onehot,...).
     """
-    sys.path.insert(0, "${GPA_REPO_ROOT}")
-    from scripts.alphagenome.score_sequences_jax import load_jax_oracle
-
     cell = os.environ.get("AG_CELL", "k562").lower()
+    backend = os.environ.get("AG_BACKEND", "jax").lower()
+    sys.path.insert(0, os.path.expandvars("${GPA_REPO_ROOT}"))
+    if backend == "torch":
+        return TorchAGServerOracle(cell=cell)
+    from scripts.alphagenome.score_sequences_jax import load_jax_oracle
     stage = os.environ.get("AG_STAGE", "stage1").lower()
     print(f"[AG Server] Loading {cell} JAX oracle ({stage}) "
           f"via score_sequences_jax", flush=True)
@@ -66,7 +107,7 @@ def score_batch(oracle, indices, batch_size=64):
 
     Per LegNet-paper TTA convention (and confirmed for AG empirically — fwd vs
     RC differs by ~0.1-0.2 per seq, Pearson 0.93), averaging fwd+RC inside the
-    optimization loop ensures pool selection AND ARCHIVE_THRESHOLD
+    optimization loop ensures best_eval pool selection AND ARCHIVE_THRESHOLD
     decisions both use the honest, strand-invariant metric — not just fwd-only.
     Cost: 2x AG inference per call. Worth it for honesty.
 

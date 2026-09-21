@@ -22,7 +22,7 @@ Recipe (locked per plan §5):
 
 Output:
   output_dir/gpa_output.h5            — final population (NOT used for reporting)
-  output_dir/gpa_output_pool.h5  — authoritative pool (best by eval-model MinGap)
+  output_dir/gpa_output_best_eval.h5  — authoritative pool (best by eval-model MinGap)
   output_dir/gpa_history.json         — beta / oracle_mean / ESS curves
   output_dir/config.json              — args dump
 """
@@ -63,6 +63,10 @@ def parse_args():
     p.add_argument("--seed_csv", default=None,
                    help="Path to seeds_{cell}_seed{seed}.csv. Defaults to "
                         "results/dna_craft_comparison/enhancer/seeds/.")
+    p.add_argument("--from_random", action="store_true",
+                   help="Initialize the population from uniform-random ACGT instead "
+                        "of the natural seed pool (matches the DRAKES-protocol "
+                        "random-init runs; for the rebuttal random-vs-seeded check).")
 
     # Backbone
     p.add_argument("--backbone", choices=["hyenadna", "dimamba"],
@@ -257,9 +261,17 @@ def main():
                                        gc_range=(args.gc_low, args.gc_high))
             return mask
 
-    # ---- Init population from seeds ----
-    print(f"\n[Init] seeds <- {args.seed_csv}")
-    population = load_seeds(Path(args.seed_csv), args.population_size)
+    # ---- Init population: random ACGT or natural seed pool ----
+    if args.from_random:
+        L = 200
+        rng_pop = np.random.default_rng(seed=args.seed)
+        population = torch.from_numpy(
+            rng_pop.integers(0, 4, size=(args.population_size, L))).long()
+        print(f"\n[Init] Random DNA sequences: {args.population_size:,} x {L}bp "
+              f"(seed={args.seed})")
+    else:
+        print(f"\n[Init] seeds <- {args.seed_csv}")
+        population = load_seeds(Path(args.seed_csv), args.population_size)
     print(f"  population: {tuple(population.shape)}")
     labels = torch.zeros(population.shape[0], 1, device=device)
 
@@ -276,7 +288,7 @@ def main():
     t0 = time.time()
     (population, oracle_scores, log_weights, history,
      best_population, best_oracle_scores,
-     pool_population, best_eval_scores) = gpa.run(
+     best_eval_population, best_eval_scores) = gpa.run(
         population, labels,
         max_beta=args.max_beta,
         ess_threshold=args.ess_threshold,
@@ -311,12 +323,12 @@ def main():
         f.attrs["elapsed_seconds"] = elapsed
 
     # ---- Best-eval population (authoritative for reporting) ----
-    if pool_population is not None:
-        be_indices = pool_population.cpu().numpy().astype(np.int8)
+    if best_eval_population is not None:
+        be_indices = best_eval_population.cpu().numpy().astype(np.int8)
         be_onehot = np.eye(4, dtype=np.float32)[be_indices].transpose(0, 2, 1)
         be_gc = ((be_indices == 1) | (be_indices == 2)).mean(axis=1).astype(np.float32)
-        be_all = eval_pool.score_all_cells(pool_population.to(device))
-        be_path = out_dir / "gpa_output_pool.h5"
+        be_all = eval_pool.score_all_cells(best_eval_population.to(device))
+        be_path = out_dir / "gpa_output_best_eval.h5"
         with h5py.File(be_path, "w") as f:
             f.create_dataset("indices", data=be_indices, compression="gzip")
             f.create_dataset("arr_0", data=be_onehot, compression="gzip")
@@ -330,7 +342,7 @@ def main():
             f.attrs["selection_metric"] = "eval_mingap"
         print(f"  best_eval written → {be_path} ({len(be_indices):,} rows)")
     else:
-        print("  WARNING: pool_population is None — no eval checkpoints fired.")
+        print("  WARNING: best_eval_population is None — no eval checkpoints fired.")
 
     # ---- History + config ----
     with open(out_dir / "gpa_history.json", "w") as f:

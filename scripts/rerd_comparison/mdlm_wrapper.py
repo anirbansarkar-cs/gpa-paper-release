@@ -33,7 +33,25 @@ def load_mdlm(checkpoint_path, svdd_dir, device="cuda"):
     if svdd_dir not in sys.path:
         sys.path.insert(0, svdd_dir)
 
-    import diffusion_gosai
+    try:
+        import diffusion_gosai
+    except ImportError:
+        # The SVDD clone is no longer on disk (its ~/SVDD tree was removed during a
+        # home cleanup). SVDD vendored this module from DRAKES, so fall back to the
+        # DRAKES copy, which is byte-compatible for load_from_checkpoint: the class
+        # path recorded in the ckpt is resolved by us, not by pickle.
+        import os as _os
+        drakes_dna = _os.environ.get(
+            "DRAKES_DNA_DIR",
+            _os.path.expanduser("~/external/DRAKES/drakes_dna"))
+        if not _os.path.isdir(drakes_dna):
+            raise ImportError(
+                "Neither `diffusion_gosai` (SVDD) nor the DRAKES fallback is "
+                f"available. Looked for DRAKES at {drakes_dna}; set DRAKES_DNA_DIR.")
+        if drakes_dna not in sys.path:
+            sys.path.insert(0, drakes_dna)
+        import diffusion_gosai_update as diffusion_gosai
+        print(f"  [mdlm_wrapper] SVDD not found; using DRAKES module at {drakes_dna}")
     from omegaconf import OmegaConf
 
     ckpt = torch.load(checkpoint_path, map_location="cpu", weights_only=False)

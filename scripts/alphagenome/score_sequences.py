@@ -31,6 +31,7 @@ Usage:
 """
 
 import argparse
+import os
 import sys
 from pathlib import Path
 
@@ -41,9 +42,9 @@ from alphagenome_ft_mpra.oracle import load_oracle, MPRAOracle
 
 # Default checkpoint paths (relocated 2026-04-25 to ${GPA_SHARED_ROOT}/models/alphagenome_encoder/jax/)
 CHECKPOINTS = {
-    "k562":  "${GPA_SHARED_ROOT}/models/alphagenome_encoder/jax/mpra-K562-optimal/stage1",
-    "hepg2": "${GPA_SHARED_ROOT}/models/alphagenome_encoder/jax/mpra-HepG2-optimal/stage1",
-    "wtc11": "${GPA_SHARED_ROOT}/models/alphagenome_encoder/jax/mpra-WTC11-optimal/stage1",
+    "k562":  os.path.expandvars("${GPA_SHARED_ROOT}/models/alphagenome_encoder/jax/mpra-K562-optimal/stage1"),
+    "hepg2": os.path.expandvars("${GPA_SHARED_ROOT}/models/alphagenome_encoder/jax/mpra-HepG2-optimal/stage1"),
+    "wtc11": os.path.expandvars("${GPA_SHARED_ROOT}/models/alphagenome_encoder/jax/mpra-WTC11-optimal/stage1"),
 }
 
 # Encoding: A=0, C=1, G=2, T=3 (matches GPA/diffusion convention)
@@ -170,8 +171,8 @@ def main():
         print(f"\n[Oracle] Loading {cell_type.upper()} AlphaGenome oracle: {ckpt_dir}")
         # Training used init_seq_len=281 (max random shift of 250bp construct).
         # Flatten pooling needs ceil(L/128)=3 encoder positions → L>256bp.
-        # mode="core" constructs: left(15) + payload(200) + right(15) + promoter(35) + barcode(15) = 280bp
-        # → ceil(280/128)=3 encoder positions → flatten=3*1536=4608 ✓
+        # mode="core" constructs: left(15) + payload(200) + right(15) + promoter(36) + barcode(15) = 281bp
+        # → ceil(281/128)=3 encoder positions → flatten=3*1536=4608 ✓
         oracle = load_oracle(
             ckpt_dir,
             left_adapter="AGGACCGGATCAACT",

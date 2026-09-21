@@ -29,6 +29,7 @@ from dataclasses import dataclass, field
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
 import numpy as np
+import scipy.stats as scipy_stats
 import torch
 
 
@@ -128,6 +129,23 @@ class GPAHistory:
     perstep_archive_specs: Optional[np.ndarray] = None      # (M,) float
     perstep_archive_cell_scores: Optional[Dict[str, np.ndarray]] = None  # {cell: (M,)}
     perstep_archive_steps: Optional[np.ndarray] = None      # (M,) int — source step
+    # Budget-capped streaming archive (Option B/C): top-N by composite rank
+    # across all eval checkpoints with online eviction. Final size = capacity.
+    # Option B signal: rank(eval) + rank(3mer_corr)
+    # Option C signal: rank(eval) + rank(3mer_corr) + rank(app_ll)
+    budget_archive_seqs: Optional[np.ndarray] = None        # (cap, L) int
+    budget_archive_eval: Optional[np.ndarray] = None        # (cap,) float — eval_score at admit
+    budget_archive_kmer_corr: Optional[np.ndarray] = None   # (cap,) float — 3mer corr with ref
+    budget_archive_app_ll: Optional[np.ndarray] = None      # (cap,) float — app_ll at admit (Option C)
+    budget_archive_steps: Optional[np.ndarray] = None       # (cap,) int — step admitted
+    # Top-K-by-AG evicting pool: capacity-bounded pool holding the highest
+    # eval-oracle (AG) sequences seen at ANY eval checkpoint, deduped by exact
+    # sequence (keep max AG), with online eviction of the weakest. Captures
+    # transient high-AG sequences the end-of-run best_eval snapshot drops.
+    # Final size = min(capacity, n_unique_seqs_evaluated).
+    topk_ag_seqs: Optional[np.ndarray] = None               # (cap, L) int
+    topk_ag_scores: Optional[np.ndarray] = None             # (cap,) float — eval (AG) score
+    topk_ag_steps: Optional[np.ndarray] = None              # (cap,) int — step of max AG
 
     def to_dict(self) -> dict:
         return {k: v for k, v in self.__dict__.items()}
@@ -315,6 +333,7 @@ class DiffusionPopulationAnnealer:
         eval_oracle_fn: Optional[Callable] = None,
         eval_checkpoint_interval: int = 0,
         archive_threshold: Optional[float] = None,
+        topk_ag_size: int = 0,
         mingap_archive_size: int = 0,
         perstep_archive_top_k: int = 0,
         eval_oracle_all_cells_fn: Optional[Callable] = None,
@@ -339,6 +358,11 @@ class DiffusionPopulationAnnealer:
         pt_temperatures: Optional[list] = None,
         pt_swap_interval: int = 5,
         branch_factor_schedule: Optional[Union[list, str]] = None,
+        budget_archive_size: int = 0,
+        budget_archive_ref_kmer: Optional[np.ndarray] = None,
+        budget_archive_use_appll: bool = False,
+        budget_archive_mdlm_model: Optional[torch.nn.Module] = None,
+        budget_archive_appll_samples: int = 3,
     ) -> Tuple[torch.Tensor, np.ndarray, np.ndarray, GPAHistory]:
         """Run the full Population Annealing loop.
 
@@ -410,7 +434,7 @@ class DiffusionPopulationAnnealer:
             history: GPAHistory with per-step diagnostics.
             best_population: (N, L) best-seen population by oracle mean.
             best_oracle_scores: (N,) oracle scores for best-seen population.
-            pool_population: (N, L) best-seen population by eval oracle
+            best_eval_population: (N, L) best-seen population by eval oracle
                 mean (None if eval checkpointing disabled).
             best_eval_scores: (N,) eval scores for best eval population
                 (None if eval checkpointing disabled).
@@ -613,7 +637,7 @@ class DiffusionPopulationAnnealer:
 
         # Track best-seen population by eval oracle (if checkpointing enabled)
         best_eval_mean = -float('inf')
-        pool_population = None
+        best_eval_population = None
         best_eval_scores = None
         best_eval_step = 0
         eval_no_improve_count = 0
@@ -633,6 +657,35 @@ class DiffusionPopulationAnnealer:
             if mingap_target_cell is None:
                 raise ValueError(
                     "spec-archive flags require mingap_target_cell")
+
+        # Budget-capped streaming archive (Option B / C). Tuple of
+        #   (seqs (M, L) int8, eval (M,) f64, kmer_corr (M,) f64,
+        #    app_ll (M,) f64 or None, steps (M,) i32)
+        # or None until first checkpoint. M ≤ budget_archive_size at all times.
+        budget_archive_state = None
+        # Top-K-by-AG evicting pool state. Lazy-init on first checkpoint;
+        # tuple (seqs[M,L] int8, scores[M] float64, steps[M] int32), M ≤ topk_ag_size.
+        topk_ag_state = None
+        if budget_archive_size > 0:
+            if budget_archive_ref_kmer is None:
+                raise ValueError(
+                    "budget_archive_size > 0 requires budget_archive_ref_kmer "
+                    "(64-element reference 3mer profile)")
+            if eval_oracle_fn is None:
+                raise ValueError(
+                    "budget_archive_size > 0 requires eval_oracle_fn for the "
+                    "eval-checkpoint ranking signal")
+            if budget_archive_use_appll and budget_archive_mdlm_model is None:
+                raise ValueError(
+                    "budget_archive_use_appll=True requires budget_archive_mdlm_model "
+                    "(MDLM Diffusion instance with _forward_pass_diffusion)")
+            # Validate reference: must be 64-vec (4^3 3-mer space)
+            _bref = np.asarray(budget_archive_ref_kmer, dtype=np.float64)
+            if _bref.shape != (64,):
+                raise ValueError(
+                    f"budget_archive_ref_kmer must be shape (64,); got {_bref.shape}")
+            _bref_centered = _bref - _bref.mean()
+            _bref_norm = np.sqrt((_bref_centered ** 2).sum())
 
         step = 0
         while step < current_step_limit:
@@ -1000,7 +1053,7 @@ class DiffusionPopulationAnnealer:
                 history.eval_checkpoint_steps.append(step + 1)
                 if eval_mean > best_eval_mean:
                     best_eval_mean = eval_mean
-                    pool_population = population.clone()
+                    best_eval_population = population.clone()
                     best_eval_scores = eval_scores.copy()
                     best_eval_step = step + 1
                     eval_no_improve_count = 0
@@ -1014,6 +1067,35 @@ class DiffusionPopulationAnnealer:
                         history.archive_scores.append(eval_scores[mask].copy())
                         history.archive_steps.append(
                             np.full(int(mask.sum()), step + 1, dtype=np.int32))
+                # Top-K-by-AG evicting pool: merge this checkpoint's full
+                # population (no threshold floor), dedup by exact sequence keeping
+                # the max AG seen, then keep the top `topk_ag_size` by AG.
+                if topk_ag_size > 0:
+                    pop_now = population.cpu().numpy().astype(np.int8)
+                    eval_now = np.asarray(eval_scores, dtype=np.float64)
+                    steps_now = np.full(len(pop_now), step + 1, dtype=np.int32)
+                    if topk_ag_state is None:
+                        t_seqs, t_scores, t_steps = pop_now, eval_now, steps_now
+                    else:
+                        p_seqs, p_scores, p_steps = topk_ag_state
+                        t_seqs = np.concatenate([p_seqs, pop_now], axis=0)
+                        t_scores = np.concatenate([p_scores, eval_now])
+                        t_steps = np.concatenate([p_steps, steps_now])
+                    # Dedup by exact sequence, keeping the row with max AG.
+                    uniq, inv = np.unique(t_seqs, axis=0, return_inverse=True)
+                    inv = inv.ravel()
+                    best = np.full(len(uniq), -np.inf)
+                    np.maximum.at(best, inv, t_scores)
+                    # Recover the step of each unique seq's max-AG occurrence.
+                    order_by_score = np.argsort(t_scores)  # ascending
+                    u_steps = np.empty(len(uniq), dtype=np.int32)
+                    u_steps[inv[order_by_score]] = t_steps[order_by_score]
+                    t_seqs, t_scores, t_steps = uniq, best, u_steps
+                    if len(t_seqs) > topk_ag_size:
+                        keep = np.argpartition(t_scores, -topk_ag_size)[-topk_ag_size:]
+                        keep = keep[np.argsort(-t_scores[keep])].copy()
+                        t_seqs, t_scores, t_steps = t_seqs[keep], t_scores[keep], t_steps[keep]
+                    topk_ag_state = (t_seqs, t_scores, t_steps)
                 # Spec-based archives (designs A and B share per-checkpoint
                 # spec/cell-score computation; do it once, then dispatch).
                 if need_spec_archives:
@@ -1081,6 +1163,93 @@ class DiffusionPopulationAnnealer:
                     for k in cells_now_np:
                         perstep_chunks['cells'][k].append(
                             cells_now_np[k][keep_b])
+                # Budget-capped streaming archive (Option B / C): top-N by
+                # composite rank across all eval checkpoints with eviction.
+                # Option B (use_appll=False): rank(eval) + rank(3mer_corr_with_ref)
+                # Option C (use_appll=True):  rank(eval) + rank(3mer_corr) + rank(app_ll)
+                if budget_archive_size > 0:
+                    pop_np = population.cpu().numpy().astype(np.int8)
+                    Npop, Lpop = pop_np.shape
+                    # Per-seq 3mer counts: (N, 64), using base codes A/C/G/T = 0..3
+                    flat = (pop_np[:, :Lpop-2].astype(np.int64) * 16
+                            + pop_np[:, 1:Lpop-1].astype(np.int64) * 4
+                            + pop_np[:, 2:Lpop].astype(np.int64))
+                    valid = ((pop_np[:, :Lpop-2] >= 0)
+                             & (pop_np[:, 1:Lpop-1] >= 0)
+                             & (pop_np[:, 2:Lpop] >= 0))
+                    rows = np.repeat(np.arange(Npop, dtype=np.int64), Lpop - 2)
+                    flat_r = flat.reshape(-1)
+                    valid_r = valid.reshape(-1)
+                    kmer_now = np.bincount(
+                        rows[valid_r] * 64 + flat_r[valid_r],
+                        minlength=Npop * 64
+                    ).reshape(Npop, 64).astype(np.float64)
+                    x = kmer_now - kmer_now.mean(axis=1, keepdims=True)
+                    x_norm = np.sqrt((x ** 2).sum(axis=1)) + 1e-12
+                    kmer_corr_now = (x * _bref_centered).sum(axis=1) / (
+                        x_norm * (_bref_norm + 1e-12))
+                    # Optional Option C: in-loop App-LL via MDLM forward
+                    appll_now = None
+                    if budget_archive_use_appll:
+                        _t_appll = time.time()
+                        mdlm = budget_archive_mdlm_model
+                        mdlm.eval()
+                        mdev = next(mdlm.parameters()).device
+                        # token codes A/C/G/T match population's {0,1,2,3}
+                        tokens = population.to(mdev).long()
+                        nll = np.zeros(Npop, dtype=np.float64)
+                        bs = 64
+                        with torch.no_grad():
+                            for s_b in range(0, Npop, bs):
+                                e_b = min(s_b + bs, Npop)
+                                batch = tokens[s_b:e_b]
+                                losses = []
+                                for _ in range(budget_archive_appll_samples):
+                                    loss_pt = mdlm._forward_pass_diffusion(batch)
+                                    losses.append(loss_pt.sum(-1).cpu().numpy())
+                                nll[s_b:e_b] = np.stack(losses, axis=0).mean(axis=0)
+                        appll_now = -nll  # higher = more likely under prior
+                        print(f"  [budget_archive App-LL] {time.time()-_t_appll:.1f}s "
+                              f"for {Npop} seqs x {budget_archive_appll_samples} t-samples",
+                              end='', flush=True)
+                    # Merge new with running archive
+                    steps_now_arr = np.full(Npop, step + 1, dtype=np.int32)
+                    eval_now_arr = np.asarray(eval_scores, dtype=np.float64)
+                    if budget_archive_state is None:
+                        c_seqs = pop_np
+                        c_eval = eval_now_arr
+                        c_kmer = kmer_corr_now
+                        c_appll = appll_now if appll_now is not None else None
+                        c_steps_bd = steps_now_arr
+                    else:
+                        b_seqs, b_eval, b_kmer, b_appll, b_steps_bd = budget_archive_state
+                        c_seqs = np.concatenate([b_seqs, pop_np], axis=0)
+                        c_eval = np.concatenate([b_eval, eval_now_arr])
+                        c_kmer = np.concatenate([b_kmer, kmer_corr_now])
+                        c_steps_bd = np.concatenate([b_steps_bd, steps_now_arr])
+                        if budget_archive_use_appll:
+                            c_appll = np.concatenate([b_appll, appll_now])
+                        else:
+                            c_appll = None
+                    # Compose rank-sum signal
+                    r_e = scipy_stats.rankdata(c_eval)
+                    r_k = scipy_stats.rankdata(c_kmer)
+                    signal = r_e + r_k
+                    if budget_archive_use_appll:
+                        r_a = scipy_stats.rankdata(c_appll)
+                        signal = signal + r_a
+                    if c_seqs.shape[0] > budget_archive_size:
+                        keep = np.argpartition(
+                            signal, -budget_archive_size
+                        )[-budget_archive_size:]
+                        keep = keep[np.argsort(-signal[keep])].copy()
+                        c_seqs = c_seqs[keep]
+                        c_eval = c_eval[keep]
+                        c_kmer = c_kmer[keep]
+                        c_steps_bd = c_steps_bd[keep]
+                        if c_appll is not None:
+                            c_appll = c_appll[keep]
+                    budget_archive_state = (c_seqs, c_eval, c_kmer, c_appll, c_steps_bd)
                 print(f"  [eval ckpt] eval_mean={eval_mean:.3f} "
                       f"(best={best_eval_mean:.3f} @ step {best_eval_step})",
                       end='', flush=True)
@@ -1166,7 +1335,7 @@ class DiffusionPopulationAnnealer:
         if best_oracle_mean > final_mean + 0.01:
             best_msg = f" (best mean={best_oracle_mean:.3f} at step {best_step})"
         eval_msg = ""
-        if pool_population is not None:
+        if best_eval_population is not None:
             eval_msg = f" (best eval={best_eval_mean:.3f} at step {best_eval_step})"
         print(f"\n[GPA] Complete: {len(history.beta)} steps{ext_msg}, "
               f"{total_time:.1f}s total, log Z(β={beta:.3f}) = {log_z:.3f}{best_msg}{eval_msg}")
@@ -1198,10 +1367,37 @@ class DiffusionPopulationAnnealer:
                   f"n_checkpoints={len(perstep_chunks['seqs'])} "
                   f"final_size={len(ps_seqs)} "
                   f"spec range=[{ps_specs.min():.3f}, {ps_specs.max():.3f}]")
+        # Persist budget-capped streaming archive (Option B / C).
+        if budget_archive_state is not None:
+            b_seqs, b_eval, b_kmer, b_appll, b_steps_bd = budget_archive_state
+            history.budget_archive_seqs = b_seqs.astype(np.int64)
+            history.budget_archive_eval = b_eval
+            history.budget_archive_kmer_corr = b_kmer
+            history.budget_archive_app_ll = b_appll  # None for Option B
+            history.budget_archive_steps = b_steps_bd
+            appll_msg = (f" appll range=[{b_appll.min():.2f}, {b_appll.max():.2f}]"
+                         if b_appll is not None else "")
+            print(f"[budget_archive] capacity={budget_archive_size} "
+                  f"final_size={len(b_seqs)} "
+                  f"eval range=[{b_eval.min():.3f}, {b_eval.max():.3f}] "
+                  f"kmer_corr range=[{b_kmer.min():.3f}, {b_kmer.max():.3f}]"
+                  f"{appll_msg} "
+                  f"steps covered={len(np.unique(b_steps_bd))}")
+
+        # Persist top-K-by-AG evicting pool.
+        if topk_ag_state is not None:
+            t_seqs, t_scores, t_steps = topk_ag_state
+            history.topk_ag_seqs = t_seqs.astype(np.int64)
+            history.topk_ag_scores = t_scores
+            history.topk_ag_steps = t_steps
+            print(f"[topk_ag] capacity={topk_ag_size} final_size={len(t_seqs)} "
+                  f"AG range=[{t_scores.min():.3f}, {t_scores.max():.3f}] "
+                  f"mean={t_scores.mean():.3f} "
+                  f"steps covered={len(np.unique(t_steps))}")
 
         return (population, oracle_scores, log_weights, history,
                 best_population, best_oracle_scores,
-                pool_population, best_eval_scores)
+                best_eval_population, best_eval_scores)
 
     def _adapt_beta(self, oracle_scores: np.ndarray, log_weights: np.ndarray,
                     ess_threshold: float, max_delta: float,
