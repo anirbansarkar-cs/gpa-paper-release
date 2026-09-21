@@ -1,0 +1,29 @@
+# Separate environment for the held-out AlphaGenome oracle (JAX).
+#
+# GPA itself never runs in here. scripts/k562_mdlm_gpa/ag_oracle_server.py runs
+# in this environment and talks to the sampler (which stays in `gpa`) over a
+# Unix domain socket, so the two never have to share a JAX/PyTorch CUDA stack.
+#
+#   conda env create -f environment-alphagenome.yml
+#   conda activate gpa-alphagenome
+#
+# NOTE: the loaders in scripts/alphagenome/ and scripts/k562_mdlm_gpa/ also
+# import `alphagenome_ft`, `alphagenome_encoder_ft` and `alphagenome_ft_mpra`.
+# Those hold our MPRA fine-tune of the AlphaGenome encoder and are not
+# published, so this environment is not sufficient to reproduce Figure 2 on its
+# own. See "Known gaps in this release" in the README.
+name: gpa-alphagenome
+channels:
+  - defaults
+dependencies:
+  - python=3.11
+  - pip
+  - pip:
+      - jax==0.9.1
+      - jaxlib==0.9.1
+      - alphagenome==0.6.1
+      - optax==0.2.7
+      - orbax-checkpoint==0.11.33
+      - numpy==2.4.3
+      - pandas
+      - h5py

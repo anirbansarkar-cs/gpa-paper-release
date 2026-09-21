@@ -202,10 +202,22 @@ conda activate gpa
 pip install -e .
 ```
 
-Requires `python >= 3.9`, `torch >= 2.0`, `lightning >= 2.0`, `flash-attn >= 2.0`.
-The AlphaGenome held-out oracle additionally needs JAX with CUDA 11.8; it runs in
-a separate environment and talks to the sampler over a Unix domain socket
-(`ag_oracle_server.py` / `ag_oracle_client.py`).
+That is python 3.9 with torch 2.5.1 (CUDA 12.4 wheels), plus numpy, scipy,
+pandas, h5py, tqdm, scikit-learn, pytorch-lightning, torchmetrics, omegaconf,
+transformers (HyenaDNA), grelu (Enformer oracles) and ledidi (baseline) — the
+versions the reported runs used. Three more modules are added to `sys.path` by
+the wrappers rather than installed: `diffusion_gosai` (DRAKES),
+`diffusion_lentimpra`, and `reglm` (Ctrl-DNA). `--backbone dimamba`
+additionally needs `mamba_ssm` and `causal_conv1d`.
+
+The held-out AlphaGenome oracle runs in its own environment
+(`environment-alphagenome.yml`: python 3.11, JAX 0.9.1, alphagenome 0.6.1) and
+talks to the sampler over a Unix domain socket, so the two never share a CUDA
+stack:
+
+```bash
+conda env create -f environment-alphagenome.yml
+```
 
 ```bash
 export GPA_REPO_ROOT=$(pwd)
@@ -262,8 +274,8 @@ anywhere, so Figure 2 cannot be reproduced end to end from this repo alone:
   Appendix J — plus the `alphagenome_ft` / `alphagenome_encoder_ft` /
   `alphagenome_ft_mpra` packages its loaders import, which are internal.
 
-Also note that `environment.yml` pins `transformers` but not `grelu`, `ledidi`
-or `reglm`; install those alongside it.
+`reglm` is not on PyPI; take it from the Ctrl-DNA release and put it on
+`PYTHONPATH`.
 
 ### Running
 

@@ -16,7 +16,7 @@ MDLM substitution-parameterized Diffusion model:
 NOTE: Track B (mamba_ssm install) is currently blocked by a CUDA toolkit
 mismatch on the cluster (see task #2). This file is implementation-ready
 and will succeed once `import mamba_ssm, causal_conv1d` works inside
-`d3_cuda118`. The GPA runner switches to this wrapper via
+the main `gpa` env. The GPA runner switches to this wrapper via
 `--backbone dimamba`.
 """
 from __future__ import annotations
@@ -34,7 +34,7 @@ MDLM_ROOT = Path(os.path.expandvars("${HOME}/mdlm"))
 if str(MDLM_ROOT) not in sys.path:
     sys.path.insert(0, str(MDLM_ROOT))
 
-# Apply the d3_mamba/torch-2.0 compatibility shims (flash_attn stub,
+# Apply the mamba/torch-2.0 compatibility shims (flash_attn stub,
 # mamba_ssm.layernorm alias, torch.no_grad compat) BEFORE mdlm/ is imported.
 # Lives in `enhancer/mdlm/_compat_shims.py`; we add that dir to sys.path so
 # this works regardless of cwd. Idempotent — also imported by train_dimamba.

@@ -374,15 +374,15 @@ def start_ag_server(socket_path, batch_size=64):
     Returns (subprocess.Popen, socket_path).
 
     The subprocess inherits this GPA process's env by default — but the GPA
-    process runs in d3_cuda118 (CUDA 11.8 ptxas, max PTX 7.8), and JAX needs
+    process runs in the main `gpa` env (older ptxas, max PTX 7.8), and JAX needs
     PTX >= 8.0 for H100's sm_90a. Force-prepend alphagenome's cuda_nvcc 12.9
     onto PATH and set XLA_FLAGS / XLA_PYTHON_CLIENT_PREALLOCATE per
     reference_jax_alphagenome_cluster_setup.md.
     """
-    # AG_ENV env var picks the conda env: 'alphagenome' (default, jaxlib 0.9 +
+    # AG_ENV env var picks the conda env: 'gpa-alphagenome' (default, jaxlib 0.9 +
     # cuDNN 9, needs driver >=555) or 'alphagenome_oldcudnn' (jaxlib 0.4.34 +
     # cuDNN 8.9.7, works on driver >=520 — covers our GPU fleet).
-    ag_env = os.environ.get("AG_ENV", "alphagenome")
+    ag_env = os.environ.get("AG_ENV", "gpa-alphagenome")
     ag_python = os.path.expandvars(f"${CONDA_ENV_ROOT}/{ag_env}/bin/python")
     server_script = str(Path(__file__).parent / "ag_oracle_server.py")
     cuda_nvcc_dir = os.path.expandvars(f"${CONDA_ENV_ROOT}/{ag_env}/lib/"

@@ -4,7 +4,7 @@ AlphaGenome K562 oracle server over Unix domain socket.
 
 Runs in the `alphagenome` conda environment (JAX).  Loads the AG K562
 checkpoint once at startup and serves score requests from the GPA process
-running in the `d3_cuda118` environment (PyTorch).
+running in the main `gpa` environment (PyTorch).
 
 Protocol (binary, little-endian):
   Request:  4-byte int32 N  |  N*200 int16 indices (row-major)

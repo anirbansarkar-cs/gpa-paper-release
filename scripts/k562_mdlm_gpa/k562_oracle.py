@@ -221,7 +221,7 @@ class TorchAGOracle:
     Assembles the 281bp construct channels-LAST in ACGT order and calls
     EncoderMPRAModel.forward (verified to match predict_sequences exactly, and
     gradients flow to the editable core). EncoderMPRAModel is imported lazily so
-    this module still imports in envs without alphagenome_encoder_ft (e.g. d3_cuda118).
+    this module still imports in envs without alphagenome_encoder_ft (e.g. the main `gpa` env).
     Channel order A=0,C=1,G=2,T=3 matches both the diffusion bio encoding and the
     AG one-hot, so no channel swap is needed.
     """
