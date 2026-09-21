@@ -143,9 +143,10 @@ report the sweep rather than one point.
 
 ### 7. Diversity maintenance
 
-GPA reaches 1.83–1.86 pairwise-Hamming diversity against a 1.98 benchmark
-ceiling; this is the paper's acknowledged gap. If diversity matters for your
-screen: `--dedup_threshold` (drop near-duplicates), `--rejuvenation_fraction`
+On the DNA-CRAFT benchmark's Diversity column — mean per-position Shannon
+entropy of the selected pool, in bits, so the ceiling is log2(4) = 2.0 — GPA
+scores 1.83–1.86 where several baselines reach 1.98. That is the paper's
+acknowledged gap. If diversity matters for your screen: `--dedup_threshold` (drop near-duplicates), `--rejuvenation_fraction`
 (re-mutate a slice of the population each step), `--elite_fraction` (protect the
 top fraction from resampling), and a larger `N`.
 
