@@ -143,12 +143,10 @@ report the sweep rather than one point.
 
 ### 7. Diversity maintenance
 
-On the DNA-CRAFT benchmark's Diversity column — mean per-position Shannon
-entropy of the selected pool, in bits, so the ceiling is log2(4) = 2.0 — GPA
-scores 1.83–1.86 where several baselines reach 1.98. That is the paper's
-acknowledged gap. If diversity matters for your screen: `--dedup_threshold` (drop near-duplicates), `--rejuvenation_fraction`
-(re-mutate a slice of the population each step), `--elite_fraction` (protect the
-top fraction from resampling), and a larger `N`.
+If diversity matters for your screen: `--dedup_threshold` (drop
+near-duplicates), `--rejuvenation_fraction` (re-mutate a slice of the population
+each step), `--elite_fraction` (protect the top fraction from resampling), and a
+larger `N`.
 
 ### 8. Local refinement and planning
 
@@ -216,11 +214,56 @@ export GPA_EXTERNAL_ROOT=/path/to/external   # DRAKES release (MDLM prior + spli
 export GPA_SHARED_ROOT=/path/to/models       # pretrained MDLM / HyenaDNA / AlphaGenome
 ```
 
-External resources, all from published releases: the MDLM backbone
-(`sahoo2024mdlm`), the HyenaDNA backbone, the DRAKES split-oracle
-(`drakes2024`), and the public AlphaGenome encoder. Ctrl-DNA, DNA-CRAFT, LEDIDI
-and ISM are used through thin wrappers here; the baseline implementations come
-from their own releases.
+### Models, data and third-party code
+
+Nothing below is redistributed here; the wrappers expect you to fetch each
+artifact yourself and point the environment variables at it.
+
+**Generators**
+
+| Artifact | Source | Where the code looks |
+|---|---|---|
+| MDLM, pretrained on Gosai MPRA | ships inside the DRAKES release, [arXiv:2410.13643](https://arxiv.org/abs/2410.13643) | `${GPA_EXTERNAL_ROOT}/DRAKES_data/data_and_model/mdlm/outputs_gosai/pretrained.ckpt` |
+| MDLM, pretrained on LentiMPRA | trained by us with the MDLM recipe (Sahoo et al., *Simple and Effective Masked Diffusion Language Models*, NeurIPS 2024) | `${GPA_SHARED_ROOT}/mdlm/lentimpra/best.ckpt` |
+| HyenaDNA | HuggingFace `LongSafari/hyenadna-medium-160k-seqlen-hf`, loaded in `hyenadna_wrapper.py:52` | `${GPA_SHARED_ROOT}/hyenadna/promoter_stage1_e3.ckpt` (our fine-tune of it) |
+| DiMamba | DNA-CRAFT, [arXiv:2604.20488](https://arxiv.org/abs/2604.20488) | `--backbone dimamba` |
+
+**Datasets**
+
+| Dataset | Source |
+|---|---|
+| Gosai MPRA (~798K enhancers; HepG2 / K562 / SK-N-SH) | Gosai et al., *Machine-guided design of cell-type-targeting cis-regulatory elements*, Nature 2024. Easiest route is the DRAKES data bundle, which vendors it with a loader |
+| Reddy MPRA promoters (JURKAT / K562 / THP1, 250 bp) | the Ctrl-DNA benchmark, [arXiv:2505.20578](https://arxiv.org/abs/2505.20578) |
+| LentiMPRA K562 | Agarwal et al. lentiMPRA release; used to train the LegNet oracle |
+
+**Oracles**
+
+| Oracle | Source |
+|---|---|
+| DRAKES split oracles (`reward_oracle_ft.ckpt`, `reward_oracle_eval.ckpt`) | the DRAKES release |
+| Enformer activity heads | trained with [gReLU](https://pypi.org/project/grelu/) on the 50/50 Gosai split; the oracle-training code is not part of this release |
+| Reddy promoter heads | gReLU MSE heads via the Ctrl-DNA `reglm` package |
+
+**Baselines**
+
+LEDIDI is the `ledidi` pip package (Schreiber, *Programmatic design and editing
+of cis-regulatory elements*, bioRxiv 2025). ISM is implemented here in
+`scripts/ledidi_comparison/run_ism_pool.py`. Ctrl-DNA and DNA-CRAFT numbers are
+quoted from their papers rather than rerun.
+
+### Known gaps in this release
+
+Two artifacts the paper depends on are ours and are not currently downloadable
+anywhere, so Figure 2 cannot be reproduced end to end from this repo alone:
+
+* the **LegNet K562 oracle** checkpoint (`legnet_k562.ckpt`), the optimization
+  oracle for the cross-oracle experiment;
+* the **AlphaGenome-derived K562 encoder**, the held-out evaluator described in
+  Appendix J — plus the `alphagenome_ft` / `alphagenome_encoder_ft` /
+  `alphagenome_ft_mpra` packages its loaders import, which are internal.
+
+Also note that `environment.yml` pins `transformers` but not `grelu`, `ledidi`
+or `reglm`; install those alongside it.
 
 ### Running
 
