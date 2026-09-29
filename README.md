@@ -98,8 +98,8 @@ differs from your design oracle. They compose; enabling several costs only disk.
 ### 2. Population size `N` — `--population_size`
 
 The one knob that reliably improves every metric. The paper's ablation sweeps
-128 → 20,000 and reports MinGap gains of +1.03 (HepG2), +1.08 (K562) and +2.98
-(SK-N-SH), with k-mer, motif and diversity improving alongside. Cost is linear
+population size across two orders of magnitude and finds activity, k-mer, motif
+and diversity all improving together. Cost is linear
 in wall-time and memory. The enhancer runs use 5,000 as a runtime/benefit
 compromise and the promoter runs use 10,000; 20,000 is better on every axis if
 you can afford it.
@@ -117,8 +117,8 @@ switches selection from argmax to softmax.
 
 Biases the proposal along the oracle gradient via a Gumbel-softmax relaxation.
 **Requires a differentiable oracle** exposing `dps_forward(soft_onehot)` — see
-`enformer_oracle.py:370`. The paper's ablation reports roughly +1.3 held-out
-activity and +1.5 specificity over the bare sampler, with the specificity gain
+`enformer_oracle.py:370`. The paper's ablation reports gains in both held-out
+activity and specificity over the bare sampler, with the specificity gain
 appearing with and without an explicit off-target penalty. Skip it if your
 oracle is black-box or API-only; the non-DPS setting is the honest reference
 there.
@@ -126,10 +126,10 @@ there.
 ### 5. The `beta*` dial — `--max_beta`
 
 The single inference-time knob that moves you along the activity–fidelity
-frontier. The paper sweeps 5 → 15 on Gosai HepG2 and reports predicted activity
-rising 6.82 → 8.45 while 3-mer correlation falls 0.912 → 0.563. There is no
-universally right value: pick the operating point your application needs, and
-report the sweep rather than one point.
+frontier. The paper sweeps it on Gosai HepG2: predicted activity rises with
+beta* while marginal-statistic fidelity falls. There is no universally right
+value — pick the operating point your application needs, and report the sweep
+rather than one point.
 
 ### 6. Multi-objective and constraint shaping
 
