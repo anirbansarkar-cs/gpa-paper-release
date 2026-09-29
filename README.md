@@ -339,26 +339,23 @@ python scripts/ledidi_comparison/build_seed_pools.py
 Reporting both is the point of the experiment: the natural pool starts near real
 enhancers, the random pool does not, and the methods separate differently on each.
 
-**Table 4, promoters.** The two methods deliberately start from different places,
-following each method's own protocol:
+**Table 4, promoters.** GPA uses five independent uniform samples of 5,000
+sequences from the *training* split — one per seed, not cell-specific and not
+filtered by activity, so the sampler gets a neutral starting pool.
 
 ```bash
-python scripts/ctrl_dna_comparison/promoter/build_arbitrary_seeds.py   # GPA
-python scripts/ctrl_dna_comparison/promoter/prepare_seeds.py \
-    --data_csv <promoter csv> --out_dir scripts/ctrl_dna_comparison/promoter/data
+python scripts/ctrl_dna_comparison/promoter/build_arbitrary_seeds.py
 ```
 
-* **GPA** uses five independent uniform samples of 5,000 sequences from the
-  *training* split — one per seed, not cell-specific and not filtered by
-  activity, so the sampler gets a neutral starting pool.
-* **Ctrl-DNA** uses the bottom 256 rows by target-cell activity from the
-  held-out *test* split, one pool per cell. This is what our runs used; it is
-  not Ctrl-DNA's own rule, which sorts its init file by a specificity composite
-  and keeps the top 128. That init file is not in their release, so we could not
-  reuse it.
+The Ctrl-DNA baseline takes one seed CSV per cell (`seeds_<CELL>.csv`, columns
+`sequence,<CELL>`). How to select them is left to you — see the Ctrl-DNA release
+for the rule their own pipeline uses. `run_table4_ctrldna_baseline.sh` stops and
+prints the expected schema if the files are absent; point it elsewhere with
+`SEED_CSV_DIR`.
 
-Both promoter scripts stop with a message naming the builder if the pools are
-missing.
+`run_table4_promoter.sh` likewise stops with the builder command if GPA's pools
+are missing.
+
 
 ### The promoter comparison (Table 4)
 

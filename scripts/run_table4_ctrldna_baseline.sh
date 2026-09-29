@@ -28,9 +28,11 @@ SEEDS=(${SEEDS:-0 1 2 3 4})
 
 SEED_CSV_DIR="${SEED_CSV_DIR:-${PROMOTER_DIR}/data}"
 if [ ! -f "${SEED_CSV_DIR}/seeds_JURKAT.csv" ]; then
-  echo "error: per-cell seed pools not found in ${SEED_CSV_DIR}." >&2
-  echo "Build them: python ${PROMOTER_DIR}/prepare_seeds.py" >&2
-  echo "See 'Seed selection' in the README." >&2
+  echo "error: no per-cell seed CSVs in ${SEED_CSV_DIR}." >&2
+  echo "Ctrl-DNA needs one CSV per cell, named seeds_<CELL>.csv, with columns" >&2
+  echo "  sequence,<CELL>   (250 bp, measured activity)" >&2
+  echo "Choosing how to select them is left to you; see their release for the" >&2
+  echo "rule their own pipeline uses. Override the directory with SEED_CSV_DIR." >&2
   exit 1
 fi
 
