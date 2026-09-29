@@ -238,8 +238,9 @@ export GPA_SHARED_ROOT=/path/to/models       # pretrained MDLM / HyenaDNA / Alph
 
 ### Models, data and third-party code
 
-**Checkpoints we trained.** Published as assets on the repository's GitHub
-release. Fetch them into the paths the run scripts expect with:
+**Checkpoints we trained.** Published at
+[huggingface.co/tataiani/gpa-checkpoints](https://huggingface.co/tataiani/gpa-checkpoints).
+Fetch them into the paths the run scripts expect with:
 
 ```bash
 export GPA_DATA_ROOT=/path/to/datasets

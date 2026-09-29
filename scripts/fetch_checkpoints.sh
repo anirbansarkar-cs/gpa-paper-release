@@ -1,12 +1,12 @@
 #!/bin/bash
-# Download the checkpoints we trained from the GitHub release and put them where
-# the run scripts look for them.
+# Download the checkpoints we trained from the Hugging Face Hub and put them
+# where the run scripts look for them.
 #
 #   export GPA_DATA_ROOT=/path/to/datasets
 #   bash scripts/fetch_checkpoints.sh
 #
-# Needs the GitHub CLI (`gh auth login`), or set USE_CURL=1 to fetch over plain
-# HTTPS instead. Override RELEASE_TAG to pin an older release.
+# Needs `huggingface_hub` (in environment.yml). The repo is public, so no token
+# is required. Override HF_REPO or HF_REVISION to pin a fork or an older commit.
 #
 # Not included: the AlphaGenome-derived encoder used as the held-out evaluator.
 # Its loaders depend on packages that are not part of this release, so the
@@ -14,50 +14,44 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-REPO="${REPO:-anirbansarkar-cs/gpa-paper-release}"
-RELEASE_TAG="${RELEASE_TAG:-checkpoints-v1}"
+HF_REPO="${HF_REPO:-tataiani/gpa-checkpoints}"
+HF_REVISION="${HF_REVISION:-main}"
 : "${GPA_DATA_ROOT:?set GPA_DATA_ROOT (where the non-repo checkpoints should live)}"
 
 PROMOTER_CKPT="scripts/ctrl_dna_comparison/promoter/checkpoints"
-mkdir -p "${PROMOTER_CKPT}/hyenadna_promoter_e3" \
-         "${GPA_DATA_ROOT}/lentimpra" \
-         "${GPA_DATA_ROOT}/enformer_oracles"
+mkdir -p "${PROMOTER_CKPT}/hyenadna_promoter_e3" "${GPA_DATA_ROOT}/lentimpra"
 
-# asset name -> destination path
-declare -A DEST=(
-  [gpa_promoter_oracle_JURKAT.ckpt]="${PROMOTER_CKPT}/human_paired_jurkat.ckpt"
-  [gpa_promoter_oracle_K562.ckpt]="${PROMOTER_CKPT}/human_paired_k562.ckpt"
-  [gpa_promoter_oracle_THP1.ckpt]="${PROMOTER_CKPT}/human_paired_THP1.ckpt"
-  [gpa_hyenadna_promoter_stage1.ckpt]="${PROMOTER_CKPT}/hyenadna_promoter_e3/best.ckpt"
-  [gpa_legnet_k562.ckpt]="${GPA_DATA_ROOT}/lentimpra/legnet_k562.ckpt"
+# hub filename -> destination path
+FILES=(
+  "gpa_promoter_oracle_JURKAT.ckpt|${PROMOTER_CKPT}/human_paired_jurkat.ckpt"
+  "gpa_promoter_oracle_K562.ckpt|${PROMOTER_CKPT}/human_paired_k562.ckpt"
+  "gpa_promoter_oracle_THP1.ckpt|${PROMOTER_CKPT}/human_paired_THP1.ckpt"
+  "gpa_hyenadna_promoter_stage1.ckpt|${PROMOTER_CKPT}/hyenadna_promoter_e3/best.ckpt"
+  "gpa_legnet_k562.ckpt|${GPA_DATA_ROOT}/lentimpra/legnet_k562.ckpt"
+  "gpa_legnet_k562_config.json|${GPA_DATA_ROOT}/lentimpra/config.json"
 )
-for CELL in hepg2 k562 sknsh; do
-  for HALF in design eval; do
-    DEST[gpa_enformer_${CELL}_${HALF}.ckpt]="${GPA_DATA_ROOT}/enformer_oracles/enformer_${CELL}_${HALF}/best.ckpt"
-  done
-done
 
-TMP="$(mktemp -d)"
-trap 'rm -rf "${TMP}"' EXIT
-
-for ASSET in "${!DEST[@]}"; do
-  OUT="${DEST[$ASSET]}"
+for ENTRY in "${FILES[@]}"; do
+  NAME="${ENTRY%%|*}"
+  OUT="${ENTRY##*|}"
   if [ -f "${OUT}" ]; then
     echo "  [skip] ${OUT} already present"
     continue
   fi
-  echo "  [get ] ${ASSET}"
+  echo "  [get ] ${NAME}"
   mkdir -p "$(dirname "${OUT}")"
-  if [ "${USE_CURL:-0}" = "1" ]; then
-    curl -fL --retry 3 -o "${TMP}/${ASSET}" \
-      "https://github.com/${REPO}/releases/download/${RELEASE_TAG}/${ASSET}"
-  else
-    gh release download "${RELEASE_TAG}" --repo "${REPO}" \
-      --pattern "${ASSET}" --dir "${TMP}" --clobber
-  fi
-  mv "${TMP}/${ASSET}" "${OUT}"
+  SRC="$(python3 - "$HF_REPO" "$HF_REVISION" "$NAME" <<'PY'
+import sys
+from huggingface_hub import hf_hub_download
+print(hf_hub_download(repo_id=sys.argv[1], revision=sys.argv[2],
+                      filename=sys.argv[3], repo_type="model"))
+PY
+)"
+  # hf_hub_download returns a path inside its cache; copy so the cache stays intact.
+  cp "${SRC}" "${OUT}"
 done
 
 echo
 echo "Done. Promoter checkpoints are in ${PROMOTER_CKPT}/;"
-echo "the rest are under ${GPA_DATA_ROOT}/."
+echo "LegNet is under ${GPA_DATA_ROOT}/lentimpra/."
+echo "Source: https://huggingface.co/${HF_REPO}"

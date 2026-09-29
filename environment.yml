@@ -37,6 +37,8 @@ dependencies:
       - grelu==1.0.10
       # LEDIDI baseline
       - ledidi==2.1.0
+      # Checkpoint download (scripts/fetch_checkpoints.sh)
+      - huggingface_hub==0.34.1
 
 # Not installed here, because they are not on PyPI and the wrappers add them to
 # sys.path instead:
