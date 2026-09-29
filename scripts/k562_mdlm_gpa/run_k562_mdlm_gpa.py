@@ -984,7 +984,10 @@ def main():
             if ag_scores_arr is None:
                 ag_csv = output_dir / "ag_k562_scores.csv"
                 ag_cmd = [
-                    os.path.expandvars("${CONDA_ENV_ROOT}/alphagenome/bin/python"),
+                    os.path.expandvars(
+                        "${CONDA_ENV_ROOT}/"
+                        + os.environ.get("AG_ENV", "gpa-alphagenome")
+                        + "/bin/python"),
                     "scripts/alphagenome/score_sequences.py",
                     "--input", str(out_h5),
                     "--output", str(ag_csv),

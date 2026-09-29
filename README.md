@@ -222,7 +222,11 @@ stack:
 
 ```bash
 conda env create -f environment-alphagenome.yml
+export CONDA_ENV_ROOT=$(conda info --base)/envs   # where the sampler looks for it
 ```
+
+Set `AG_ENV` if you name that environment something other than
+`gpa-alphagenome`.
 
 ```bash
 export GPA_REPO_ROOT=$(pwd)
@@ -233,8 +237,8 @@ export GPA_SHARED_ROOT=/path/to/models       # pretrained MDLM / HyenaDNA / Alph
 
 ### Models, data and third-party code
 
-**Checkpoints we trained.** These are released as a separate archive alongside
-this repository, and the code to retrain each one from scratch is included here:
+**Checkpoints we trained.** The code to rebuild each one from data is in this
+repository:
 
 | Checkpoint | Retrain with |
 |---|---|
@@ -260,10 +264,11 @@ this repository, and the code to retrain each one from scratch is included here:
 |---|---|
 | Gosai MPRA enhancers (HepG2 / K562 / SK-N-SH) | Gosai et al., *Machine-guided design of cell-type-targeting cis-regulatory elements*, Nature 2024. The DRAKES data bundle vendors it with a loader |
 | Reddy MPRA promoters (JURKAT / K562 / THP1, 250 bp) | Reddy et al., *Designing Cell-Type-Specific Promoter Sequences Using Conservative Model-Based Optimization*, NeurIPS 2024 |
-| LentiMPRA K562 | the lentiMPRA release; used to train the LegNet oracle |
+| LentiMPRA K562 | Agarwal et al. lentiMPRA release; used to train the LegNet oracle |
 
 **Third-party code.** `reglm` and `dna_optimizers_multi` come from the Ctrl-DNA
-release and are imported, not reimplemented — set `CTRL_DNA_HOME`. `grelu` and
+release ([arXiv:2505.20578](https://arxiv.org/abs/2505.20578)) and are imported,
+not reimplemented — set `CTRL_DNA_HOME`. `grelu` and
 `ledidi` are pip packages. LEDIDI is Schreiber, *Programmatic design and editing
 of cis-regulatory elements*, bioRxiv 2025; ISM is implemented here in
 `scripts/ledidi_comparison/run_ism_pool.py`. The Ctrl-DNA promoter baseline is
