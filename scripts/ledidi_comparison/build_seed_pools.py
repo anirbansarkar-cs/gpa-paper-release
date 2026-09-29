@@ -28,7 +28,7 @@ import numpy as np
 
 # Original Deep-SEDD copy was removed in the 2026-06 home cleanup; in-repo copy
 # (identical schema: 39,340 test rows) is the canonical source.
-LENTIMPRA_H5 = os.path.expandvars("${GPA_REPO_ROOT}/model_zoo/lentimpra/lenti_MPRA_K562_data.h5")
+LENTIMPRA_H5 = os.path.expandvars("${GPA_DATA_ROOT}/lentimpra/lenti_MPRA_K562_data.h5")
 ADAPTER_FWD = "AGGACCGGATCAACT"  # 15 bp 5' adapter
 ADAPTER_RC  = "CATTGCGTGAACCGA"  # 15 bp 3' adapter
 ADAPTER_LEN = 15

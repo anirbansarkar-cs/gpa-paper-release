@@ -155,9 +155,12 @@ def score(oracle, onehot: np.ndarray, batch_size: int = 64) -> np.ndarray:
 
 
 if __name__ == "__main__":
-    # Smoke test: load each cell, score 32 seqs from one GPA pool, print scales.
+    # Smoke test: load each cell, score 32 seqs from a GPA pool, print scales.
+    #   python score_sequences_jax.py <pool.h5>
     import h5py
-    h5p = os.path.expandvars("${GPA_REPO_ROOT}/results/k562_mdlm_gpa/run_v13_nodps_bf10_b1k_cap10_ism50178/gpa_output_best_eval.h5")
+    if len(sys.argv) < 2:
+        sys.exit("usage: score_sequences_jax.py <gpa_output_best_eval.h5>")
+    h5p = sys.argv[1]
     with h5py.File(h5p, "r") as f:
         idx = f["indices"][:32]
     oh = indices_to_onehot(idx)

@@ -664,8 +664,7 @@ def main():
     if args.budget_archive_size > 0:
         from itertools import product as _ip
         ref_npz_path = os.path.expandvars(args.budget_archive_ref_kmer_npz
-                        or "${GPA_REPO_ROOT}/results/"
-                           "rerd_comparison/drakes_protocol/_ref_cache/highexp_999.npz")
+                        or "${GPA_DATA_ROOT}/gosai_ref_cache/highexp_999.npz")
         ref_npz = np.load(ref_npz_path, allow_pickle=True)
         ref_key = args.budget_archive_ref_kmer_key
         if ref_key not in ref_npz.files:

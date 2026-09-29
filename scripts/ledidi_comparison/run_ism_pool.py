@@ -35,10 +35,7 @@ from scripts.k562_mdlm_gpa.k562_oracle import K562Oracle, load_k562_oracle
 
 SEQ_LEN = 200
 BASES = "ACGT"
-DEFAULT_ORACLE = os.path.expandvars(
-    "${GPA_REPO_ROOT}/model_zoo/lentimpra/oracle_models/"
-    "best_model-epoch=24-val_pearson=0.814.ckpt"
-)
+DEFAULT_ORACLE = os.path.expandvars("${GPA_DATA_ROOT}/lentimpra/legnet_k562.ckpt")
 
 
 def indices_to_seq(idx: np.ndarray) -> str:

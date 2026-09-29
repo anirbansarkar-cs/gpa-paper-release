@@ -28,9 +28,9 @@ from ledidi import Ledidi
 # =============================================================================
 # Config
 # =============================================================================
-ORACLE_CKPT = os.path.expandvars('${GPA_REPO_ROOT}/model_zoo/lentimpra/oracle_models/best_model-epoch=24-val_pearson=0.814.ckpt')
-ISM_CSV = os.path.expandvars('${GPA_REPO_ROOT}/results/ism_high_oracle_scored.csv')
-GPA_SEED_H5 = os.path.expandvars('${GPA_REPO_ROOT}/results/k562_mdlm_gpa/single_seed_299823.h5')
+ORACLE_CKPT = os.path.expandvars('${GPA_DATA_ROOT}/lentimpra/legnet_k562.ckpt')
+ISM_CSV = None       # required only for --seed_mode ism; pass --ism_csv
+GPA_SEED_H5 = None   # required only for --seed_mode gpa; pass --gpa_seed_h5
 OUTPUT_DIR = os.path.expandvars('${GPA_REPO_ROOT}/results/ledidi_comparison')
 
 BASES = {'A': 0, 'C': 1, 'G': 2, 'T': 3}

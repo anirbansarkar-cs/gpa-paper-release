@@ -70,7 +70,7 @@ for POOL_TAG in random natural; do
   OUT="${OUT_ROOT}/ledidi_${POOL_TAG}"
   mkdir -p "${OUT}"
   python scripts/ledidi_comparison/run_ledidi_baseline.py \
-      --seed_pool "${POOL}" --seed_mode pool \
+      --seed_pool "${POOL}" --seed_mode pool_h5 \
       --oracle_ckpt "${LN_CKPT}" --oracle_type legnet \
       --max_iter 1000 --ledidi_batch_size 128 \
       --snapshot_iters 50,100,200,400,1000 \
