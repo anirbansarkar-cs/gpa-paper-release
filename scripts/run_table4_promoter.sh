@@ -3,7 +3,7 @@
 # (JURKAT / K562 / THP1, 250 bp, frozen HyenaDNA backbone).
 #
 # One universal inference-time recipe across all three cells (Appendix Table 6):
-#   N = 5000, alpha = 0.5, beta* = 100, T_max = 60, nf = 0.05,
+#   N = 10000, alpha = 0.5, beta* = 100, T_max = 60, nf = 0.05,
 #   K = 8 (argmax branch selection), pw = 0.35, lambda = 1.0, no DPS,
 #   no bio filter.
 #
@@ -18,7 +18,7 @@ OUT_ROOT="${OUT_ROOT:-results/ctrl_dna_comparison/promoter}"
 CKPT="${CKPT:-${PROMOTER_DIR}/checkpoints/hyenadna_promoter_e3/best.ckpt}"
 ORACLE_DIR="${ORACLE_DIR:-${PROMOTER_DIR}/checkpoints}"
 
-POP="${POP:-5000}"                 # Appendix Table 6
+POP="${POP:-10000}"                # what the reported runs used
 CELLS=(${CELLS:-JURKAT K562 THP1})
 SEEDS=(${SEEDS:-0 1 2 3 4})        # seeds_arbitrary_set{0..4}.csv
 

@@ -100,8 +100,9 @@ differs from your design oracle. They compose; enabling several costs only disk.
 The one knob that reliably improves every metric. The paper's ablation sweeps
 128 → 20,000 and reports MinGap gains of +1.03 (HepG2), +1.08 (K562) and +2.98
 (SK-N-SH), with k-mer, motif and diversity improving alongside. Cost is linear
-in wall-time and memory. The paper's headline runs use 5,000 as a
-runtime/benefit compromise; 20,000 is better on every axis if you can afford it.
+in wall-time and memory. The enhancer runs use 5,000 as a runtime/benefit
+compromise and the promoter runs use 10,000; 20,000 is better on every axis if
+you can afford it.
 
 ### 3. Branch factor `K` — `--branch_factor`
 
