@@ -237,8 +237,15 @@ export GPA_SHARED_ROOT=/path/to/models       # pretrained MDLM / HyenaDNA / Alph
 
 ### Models, data and third-party code
 
-**Checkpoints we trained.** The code to rebuild each one from data is in this
-repository:
+**Checkpoints we trained.** Published as assets on the repository's GitHub
+release. Fetch them into the paths the run scripts expect with:
+
+```bash
+export GPA_DATA_ROOT=/path/to/datasets
+bash scripts/fetch_checkpoints.sh
+```
+
+The code to rebuild each one from data is also here:
 
 | Checkpoint | Retrain with |
 |---|---|
