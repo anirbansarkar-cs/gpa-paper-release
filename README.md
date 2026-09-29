@@ -284,14 +284,26 @@ of cis-regulatory elements*, bioRxiv 2025; ISM is implemented here in
 rerun here via `scripts/run_table4_ctrldna_baseline.sh`; the DNA-CRAFT enhancer
 baselines are quoted from their paper rather than rerun.
 
-### One component is not reproducible from this repo
+### The held-out AlphaGenome oracle
 
-The AlphaGenome-derived K562 encoder used as the held-out evaluator in the
-cross-oracle experiment is ours, but its loaders import `alphagenome_ft`,
-`alphagenome_encoder_ft` and `alphagenome_ft_mpra` — internal packages that are
-not part of this release. Releasing the checkpoint alone is not enough to load
-it. Everything else in the repo runs without it; only the held-out AlphaGenome
-scoring path depends on it.
+The cross-oracle experiment scores designs with an AlphaGenome encoder
+fine-tuned for MPRA activity, held out from the optimisation loop. We do not
+redistribute our fine-tuned weights, but every piece needed to train an
+equivalent one is public:
+
+| Component | Repository |
+|---|---|
+| AlphaGenome base model and SDK | [google-deepmind/alphagenome](https://github.com/google-deepmind/alphagenome) |
+| Encoder fine-tuning — the torch oracle in `k562_oracle.py` / `ag_oracle_server.py` | [MasayukiNagai/alphagenome-encoder-ft](https://github.com/MasayukiNagai/alphagenome-encoder-ft) |
+| MPRA fine-tuning recipes and benchmarks | [Al-Murphy/alphagenome_FT_MPRA](https://github.com/Al-Murphy/alphagenome_FT_MPRA) |
+| JAX fine-tuning utilities used by `scripts/alphagenome/` | [genomicsxai/alphagenome_ft](https://github.com/genomicsxai/alphagenome_ft) |
+
+Install those alongside the main environment and point the checkpoint paths in
+`k562_oracle.py` and `scripts/alphagenome/` at your own fine-tune. A different
+fine-tune will not give numerically identical held-out scores to ours, but it
+serves the same role: an evaluator trained independently of the oracle being
+optimised, which is the property the experiment relies on.
+
 
 ### Running
 

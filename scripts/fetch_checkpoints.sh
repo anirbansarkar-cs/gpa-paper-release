@@ -8,9 +8,9 @@
 # Needs `huggingface_hub` (in environment.yml). The repo is public, so no token
 # is required. Override HF_REPO or HF_REVISION to pin a fork or an older commit.
 #
-# Not included: the AlphaGenome-derived encoder used as the held-out evaluator.
-# Its loaders depend on packages that are not part of this release, so the
-# checkpoint alone would not load — see the README.
+# Not included: our AlphaGenome-derived encoder, the held-out evaluator for the
+# cross-oracle experiment. The README lists the public repositories you can use
+# to fine-tune an equivalent one.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
