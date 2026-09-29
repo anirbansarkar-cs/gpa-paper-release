@@ -180,7 +180,8 @@ scripts/
   run_table1_dnacraft.sh           Table 1 — DNA-CRAFT enhancer benchmark
   run_table2_gosai.sh              Table 2 — Gosai HepG2, beta* in {5,10,15}
   run_fig2_crossoracle.sh          Figure 2 — LegNet/AlphaGenome cross-oracle
-  run_promoter_oracles.sh          Table 4 — train the three promoter oracles
+  run_promoter_stage1.sh           Table 4 — shared HyenaDNA backbone
+  run_promoter_oracles.sh          Table 4 — the three promoter oracles
   run_table4_promoter.sh           Table 4 — GPA
   run_table4_ctrldna_baseline.sh   Table 4 — Ctrl-DNA baseline
   rerd_comparison/                 MDLM backbone + Enformer oracle (Tables 1, 2)
@@ -300,14 +301,26 @@ This benchmark designs 250 bp promoters for JURKAT, K562 and THP1 against the
 promoter MPRA of Reddy et al., *Designing Cell-Type-Specific Promoter Sequences
 Using Conservative Model-Based Optimization*, NeurIPS 2024.
 
-Both methods are scored by the same three activity oracles, and both design
-against them:
+Both methods start from the same fine-tuned HyenaDNA backbone and are scored by
+the same three activity oracles, which they also design against. Everything
+derives from one input CSV, so run these in order:
 
 ```bash
-bash scripts/run_promoter_oracles.sh         # 1. train the three oracles
-bash scripts/run_table4_promoter.sh          # 2. GPA
-bash scripts/run_table4_ctrldna_baseline.sh  # 3. Ctrl-DNA baseline (slow)
+bash scripts/run_promoter_stage1.sh          # 1. fine-tune the shared HyenaDNA backbone
+bash scripts/run_promoter_oracles.sh         # 2. train the three activity oracles
+bash scripts/run_table4_promoter.sh          # 3. GPA
+bash scripts/run_table4_ctrldna_baseline.sh  # 4. Ctrl-DNA baseline (slow)
 ```
+
+Steps 3 and 4 pick up the outputs of 1 and 2 by default; override `CKPT` and
+`ORACLE_DIR` to point elsewhere.
+
+Step 1 conditions the backbone with Ctrl-DNA's published promoter scheme: a
+3-digit prefix `<JURKAT><K562><THP1>`, each digit 1 if that cell's activity is
+at or above the cell's median taken over training rows only. Ctrl-DNA's
+`reinforce_multi_lagrange.py:get_prefix_label()` prompts with `100`/`010`/`001`,
+the three "this cell only high" cases under that scheme. GPA samples from this
+backbone frozen; Ctrl-DNA RL-fine-tunes it.
 
 Note what this means for interpretation: on this benchmark the design oracle and
 the evaluation oracle are the same model. There is no held-out oracle, as there
@@ -326,9 +339,11 @@ Clone it and point `CTRL_DNA_HOME` at it (default `~/Ctrl-DNA`):
 export CTRL_DNA_HOME=/path/to/Ctrl-DNA
 ```
 
-**Training the promoter oracles.** `run_promoter_oracles.sh` expects a CSV at
-`scripts/ctrl_dna_comparison/promoter/data/finetuning_data.csv` with this
-schema, one row per measured promoter:
+**The one input you must supply.** Steps 1 and 2 both read a CSV at
+`scripts/ctrl_dna_comparison/promoter/data/finetuning_data.csv`. It is the root
+of the whole benchmark — the backbone labels, the oracles and the activity
+ranges are all derived from it, so nothing here runs without it. One row per
+measured promoter, with this schema:
 
 ```
 sequence    250 bp string over ACGT

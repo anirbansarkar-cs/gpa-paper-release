@@ -21,12 +21,12 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-: "${GPA_SHARED_ROOT:?set GPA_SHARED_ROOT}"
 PROMOTER_DIR="scripts/ctrl_dna_comparison/promoter"
 OUT_ROOT="${OUT_ROOT:-results/ctrl_dna_comparison/promoter}"
 
 # Stage-1 HyenaDNA policy, the shared starting point for both methods.
-CKPT="${CKPT:-${GPA_SHARED_ROOT}/hyenadna/promoter_stage1_e3.ckpt}"
+# Defaults chain from run_promoter_stage1.sh and run_promoter_oracles.sh.
+CKPT="${CKPT:-${PROMOTER_DIR}/checkpoints/hyenadna_promoter_e3/best.ckpt}"
 ORACLE_DIR="${ORACLE_DIR:-${PROMOTER_DIR}/checkpoints}"
 
 CELLS=(${CELLS:-JURKAT K562 THP1})
