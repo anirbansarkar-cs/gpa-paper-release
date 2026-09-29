@@ -11,10 +11,11 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 : "${GPA_DATA_ROOT:?set GPA_DATA_ROOT}"
-: "${GPA_SHARED_ROOT:?set GPA_SHARED_ROOT}"
+: "${GPA_EXTERNAL_ROOT:?set GPA_EXTERNAL_ROOT}"
 OUT_ROOT="${OUT_ROOT:-results/dna_craft_comparison}"
 
-MDLM_CKPT="${MDLM_CKPT:-${GPA_SHARED_ROOT}/mdlm/gosai/last.ckpt}"
+# Same Gosai MDLM prior as run_table2_gosai.sh, from the DRAKES release.
+MDLM_CKPT="${MDLM_CKPT:-${GPA_EXTERNAL_ROOT}/DRAKES_data/data_and_model/mdlm/outputs_gosai/pretrained.ckpt}"
 ORACLE_CKPT="${ORACLE_CKPT:-${GPA_DATA_ROOT}/gosai_split_oracles/design.ckpt}"
 EVAL_CKPT="${EVAL_CKPT:-${GPA_DATA_ROOT}/gosai_split_oracles/eval.ckpt}"
 SEED_FILE="${SEED_FILE:-${GPA_DATA_ROOT}/gosai_seeds_hepg2.h5}"

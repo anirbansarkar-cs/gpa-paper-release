@@ -186,11 +186,13 @@ scripts/
   run_table4_ctrldna_baseline.sh   Table 4 — Ctrl-DNA baseline
   rerd_comparison/                 MDLM backbone + Enformer oracle (Tables 1, 2)
   k562_mdlm_gpa/                   LentiMPRA K562 driver + LegNet/AlphaGenome oracles
-  ledidi_comparison/               ISM and LEDIDI baselines
-  ctrl_dna_comparison/             HyenaDNA backbone + Reddy promoter oracles
-  dna_craft_comparison/            DiMamba/HyenaDNA enhancer driver
+  ledidi_comparison/               ISM and LEDIDI baselines, K562 seed pools
+  ctrl_dna_comparison/             HyenaDNA backbone + promoter oracle training,
+                                   GPA and Ctrl-DNA promoter runners
+  dna_craft_comparison/            DiMamba/HyenaDNA enhancer driver, Gosai split
+                                   + Enformer oracle training
   alphagenome/                     Held-out AlphaGenome scorer (JAX)
-model_zoo/lentimpra/mpralegnet.py  LegNet definition used by the K562 oracle
+model_zoo/lentimpra/mpralegnet.py  LegNet definition and training for the K562 oracle
 bio_plausibility.py                Sequence-level bio filter
 ```
 
@@ -231,54 +233,51 @@ export GPA_SHARED_ROOT=/path/to/models       # pretrained MDLM / HyenaDNA / Alph
 
 ### Models, data and third-party code
 
-Nothing below is redistributed here; the wrappers expect you to fetch each
-artifact yourself and point the environment variables at it.
+**Checkpoints we trained.** These are released as a separate archive alongside
+this repository, and the code to retrain each one from scratch is included here:
 
-**Generators**
+| Checkpoint | Retrain with |
+|---|---|
+| HyenaDNA promoter backbone (stage 1, shared by both promoter methods) | `scripts/run_promoter_stage1.sh` |
+| Promoter activity oracles, one per cell | `scripts/run_promoter_oracles.sh` |
+| Enformer design + evaluation oracles for the Gosai 50/50 split | `scripts/dna_craft_comparison/enhancer/oracles/train_enformer_split.py`, after `data/gosai_50_50_split.py` |
+| LegNet K562 oracle | `model_zoo/lentimpra/mpralegnet.py` (`train_model`, or run the module directly) |
+| MDLM fine-tuned on LentiMPRA | the MDLM recipe of Sahoo et al., *Simple and Effective Masked Diffusion Language Models*, NeurIPS 2024 — we did not modify their training code, so use their release |
+| AlphaGenome-derived K562 encoder (held-out evaluator, Appendix J) | see the note below |
 
-| Artifact | Source | Where the code looks |
-|---|---|---|
-| MDLM, pretrained on Gosai MPRA | ships inside the DRAKES release, [arXiv:2410.13643](https://arxiv.org/abs/2410.13643) | `${GPA_EXTERNAL_ROOT}/DRAKES_data/data_and_model/mdlm/outputs_gosai/pretrained.ckpt` |
-| MDLM, pretrained on LentiMPRA | trained by us with the MDLM recipe (Sahoo et al., *Simple and Effective Masked Diffusion Language Models*, NeurIPS 2024) | `${GPA_SHARED_ROOT}/mdlm/lentimpra/best.ckpt` |
-| HyenaDNA | HuggingFace `LongSafari/hyenadna-medium-160k-seqlen-hf`, loaded in `hyenadna_wrapper.py:52` | `${GPA_SHARED_ROOT}/hyenadna/promoter_stage1_e3.ckpt` (our fine-tune of it) |
-| DiMamba | DNA-CRAFT, [arXiv:2604.20488](https://arxiv.org/abs/2604.20488) | `--backbone dimamba` |
+**Checkpoints from published releases.** Fetch these from upstream:
 
-**Datasets**
+| Checkpoint | Source |
+|---|---|
+| MDLM pretrained on Gosai MPRA | the DRAKES release, [arXiv:2410.13643](https://arxiv.org/abs/2410.13643) |
+| DRAKES split oracles (`reward_oracle_ft.ckpt`, `reward_oracle_eval.ckpt`) | the DRAKES release |
+| HyenaDNA base model | HuggingFace `LongSafari/hyenadna-medium-160k-seqlen-hf`, loaded in `hyenadna_wrapper.py` |
+| DiMamba backbone | DNA-CRAFT, [arXiv:2604.20488](https://arxiv.org/abs/2604.20488) |
+
+**Datasets.** None are redistributed here.
 
 | Dataset | Source |
 |---|---|
-| Gosai MPRA (~798K enhancers; HepG2 / K562 / SK-N-SH) | Gosai et al., *Machine-guided design of cell-type-targeting cis-regulatory elements*, Nature 2024. Easiest route is the DRAKES data bundle, which vendors it with a loader |
-| Reddy MPRA promoters (JURKAT / K562 / THP1, 250 bp) | the Ctrl-DNA benchmark, [arXiv:2505.20578](https://arxiv.org/abs/2505.20578) |
-| LentiMPRA K562 | Agarwal et al. lentiMPRA release; used to train the LegNet oracle |
+| Gosai MPRA enhancers (HepG2 / K562 / SK-N-SH) | Gosai et al., *Machine-guided design of cell-type-targeting cis-regulatory elements*, Nature 2024. The DRAKES data bundle vendors it with a loader |
+| Reddy MPRA promoters (JURKAT / K562 / THP1, 250 bp) | Reddy et al., *Designing Cell-Type-Specific Promoter Sequences Using Conservative Model-Based Optimization*, NeurIPS 2024 |
+| LentiMPRA K562 | the lentiMPRA release; used to train the LegNet oracle |
 
-**Oracles**
+**Third-party code.** `reglm` and `dna_optimizers_multi` come from the Ctrl-DNA
+release and are imported, not reimplemented — set `CTRL_DNA_HOME`. `grelu` and
+`ledidi` are pip packages. LEDIDI is Schreiber, *Programmatic design and editing
+of cis-regulatory elements*, bioRxiv 2025; ISM is implemented here in
+`scripts/ledidi_comparison/run_ism_pool.py`. The Ctrl-DNA promoter baseline is
+rerun here via `scripts/run_table4_ctrldna_baseline.sh`; the DNA-CRAFT enhancer
+baselines are quoted from their paper rather than rerun.
 
-| Oracle | Source |
-|---|---|
-| DRAKES split oracles (`reward_oracle_ft.ckpt`, `reward_oracle_eval.ckpt`) | the DRAKES release |
-| Enformer activity heads | trained with [gReLU](https://pypi.org/project/grelu/) on the 50/50 Gosai split; the oracle-training code is not part of this release |
-| Reddy promoter heads | gReLU MSE heads via the Ctrl-DNA `reglm` package |
+### One component is not reproducible from this repo
 
-**Baselines**
-
-LEDIDI is the `ledidi` pip package (Schreiber, *Programmatic design and editing
-of cis-regulatory elements*, bioRxiv 2025). ISM is implemented here in
-`scripts/ledidi_comparison/run_ism_pool.py`. Ctrl-DNA and DNA-CRAFT numbers are
-quoted from their papers rather than rerun.
-
-### Known gaps in this release
-
-Two artifacts the paper depends on are ours and are not currently downloadable
-anywhere, so Figure 2 cannot be reproduced end to end from this repo alone:
-
-* the **LegNet K562 oracle** checkpoint (`legnet_k562.ckpt`), the optimization
-  oracle for the cross-oracle experiment;
-* the **AlphaGenome-derived K562 encoder**, the held-out evaluator described in
-  Appendix J — plus the `alphagenome_ft` / `alphagenome_encoder_ft` /
-  `alphagenome_ft_mpra` packages its loaders import, which are internal.
-
-`reglm` is not on PyPI; take it from the Ctrl-DNA release and put it on
-`PYTHONPATH`.
+The AlphaGenome-derived K562 encoder used as the held-out evaluator in the
+cross-oracle experiment is ours, but its loaders import `alphagenome_ft`,
+`alphagenome_encoder_ft` and `alphagenome_ft_mpra` — internal packages that are
+not part of this release. Releasing the checkpoint alone is not enough to load
+it. Everything else in the repo runs without it; only the held-out AlphaGenome
+scoring path depends on it.
 
 ### Running
 
@@ -302,8 +301,9 @@ promoter MPRA of Reddy et al., *Designing Cell-Type-Specific Promoter Sequences
 Using Conservative Model-Based Optimization*, NeurIPS 2024.
 
 Both methods start from the same fine-tuned HyenaDNA backbone and are scored by
-the same three activity oracles, which they also design against. Everything
-derives from one input CSV, so run these in order:
+the same three activity oracles, which they also design against. With the
+released checkpoints in place you only need steps 3 and 4; steps 1 and 2 rebuild
+those checkpoints from data:
 
 ```bash
 bash scripts/run_promoter_stage1.sh          # 1. fine-tune the shared HyenaDNA backbone
@@ -339,10 +339,11 @@ Clone it and point `CTRL_DNA_HOME` at it (default `~/Ctrl-DNA`):
 export CTRL_DNA_HOME=/path/to/Ctrl-DNA
 ```
 
-**The one input you must supply.** Steps 1 and 2 both read a CSV at
-`scripts/ctrl_dna_comparison/promoter/data/finetuning_data.csv`. It is the root
-of the whole benchmark — the backbone labels, the oracles and the activity
-ranges are all derived from it, so nothing here runs without it. One row per
+**Retraining rather than using the released checkpoints.** Steps 1 and 2 are
+only needed if you want to retrain; otherwise drop the released checkpoints into
+`scripts/ctrl_dna_comparison/promoter/checkpoints/` and start at step 3. To
+retrain, supply a CSV at
+`scripts/ctrl_dna_comparison/promoter/data/finetuning_data.csv` — one row per
 measured promoter, with this schema:
 
 ```
@@ -355,10 +356,12 @@ is_val      boolean split flag
 is_test     boolean split flag
 ```
 
-The three flags must partition the rows; the training script reads them as given
-and does not resplit. Build this file from the Reddy et al. release using the
-regLM preprocessing pipeline that Ctrl-DNA follows
-(https://github.com/Genentech/regLM).
+The three flags must partition the rows; the scripts read them as given and do
+not resplit. The seed pools under `promoter/data/` are derived from the same
+CSV — regenerate them with `promoter/build_arbitrary_seeds.py` (GPA's uniform
+pools) and `promoter/prepare_seeds.py` (Ctrl-DNA's low-activity pools). Build this file from the Reddy et al. release using the regLM
+preprocessing pipeline that Ctrl-DNA follows
+(https://github.com/Genentech/regLM). It is not redistributed here.
 
 The script then trains one regLM `EnformerModel` per cell with an MSE head, the
 Enformer trunk initialised from pretrained weights, at 250 bp, 20 epochs, batch

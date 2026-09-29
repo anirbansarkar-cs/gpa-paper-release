@@ -5,15 +5,9 @@
 # against the same three oracle checkpoints GPA designs against. Run
 # scripts/run_promoter_oracles.sh first.
 #
-# "R200" in the paper means --max_iter 200. Budget roughly two days per seed on
-# a single H100.
-#
-# NOTE ON CONFIGURATION. Ctrl-DNA's own promoter script
-# (ctrl_dna/reinforce_lagrange_promoters.sh) uses --max_iter 100 and per-cell
-# Lagrangian settings: lambda_lr 3e-4 (JURKAT) / 3e-3 (K562, THP1), and
-# lambda_value 0.1 0.9 (JURKAT) / 0.2 0.9 (K562) / 0.5 0.5 (THP1). The runs
-# reported in the paper used 200 iterations and a single setting across all
-# three cells, spelled out explicitly below rather than left to defaults.
+# "R200" means --max_iter 200. Budget roughly two days per seed on a single
+# H100. Every setting used for our runs is spelled out below rather than left
+# to a default.
 #
 # Requires the Ctrl-DNA release on disk; the wrapper imports
 # `src.reglm` and `dna_optimizers_multi` from it. Set CTRL_DNA_HOME if it is not
