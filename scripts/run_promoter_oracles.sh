@@ -29,8 +29,8 @@ DATA_CSV="${DATA_CSV:-${PROMOTER_DIR}/data/finetuning_data.csv}"
 OUT_DIR="${OUT_DIR:-${PROMOTER_DIR}/checkpoints}"
 
 if [ ! -f "${DATA_CSV}" ]; then
-  echo "error: ${DATA_CSV} not found. See the README section 'Training the" >&2
-  echo "promoter oracles' for the schema this file must have." >&2
+  echo "error: ${DATA_CSV} not found. See the README section" >&2
+  echo "'The promoter comparison (Table 4)' for the schema this file needs." >&2
   exit 1
 fi
 

@@ -24,8 +24,8 @@ OUTPUT_DIR="${OUTPUT_DIR:-${PROMOTER_DIR}/checkpoints/hyenadna_promoter_e3}"
 MAX_EPOCHS="${MAX_EPOCHS:-3}"
 
 if [ ! -f "${DATA_CSV}" ]; then
-  echo "error: ${DATA_CSV} not found. See 'Training the promoter oracles' in" >&2
-  echo "the README for the schema this file must have." >&2
+  echo "error: ${DATA_CSV} not found. See 'The promoter comparison (Table 4)'" >&2
+  echo "in the README for the schema this file must have." >&2
   exit 1
 fi
 
