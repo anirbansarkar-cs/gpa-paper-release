@@ -308,6 +308,56 @@ bash scripts/run_table4_promoter.sh      # 3 cells x 5 seeds, ~2.2 h/seed
 
 The promoter comparison has a prerequisite — see below.
 
+### Seed selection
+
+Each benchmark starts GPA from a different initial population, and the rules
+differ. None of the seed pools are shipped — the builders are, and each reads
+the dataset for its benchmark.
+
+**Table 1, DNA-CRAFT enhancers.** Top-`k` sequences by target-cell activity from
+the Gosai MPRA, filtered to GC in [0.45, 0.55], one pool per cell
+(`k=10,000` by default). The runner draws from these with `--top_k_init`.
+
+```bash
+python scripts/rerd_comparison/build_cell_seed_pools.py --cells hepg2 k562 sknsh
+```
+
+**Table 2, Gosai HepG2.** No seed pool. `run_table2_gosai.sh` passes
+`--from_random`, so the population is initialised from uniform random sequence
+and the frozen prior does the rest.
+
+**Figure 2, cross-oracle.** Two 5,000-sequence pools, both 200 bp:
+
+```bash
+python scripts/ledidi_comparison/build_seed_pools.py
+```
+
+* *random* — uniform random DNA;
+* *natural* — sequences sampled from the K562 lentiMPRA test split, adapters
+  stripped.
+
+Reporting both is the point of the experiment: the natural pool starts near real
+enhancers, the random pool does not, and the methods separate differently on each.
+
+**Table 4, promoters.** The two methods deliberately start from different places,
+following each method's own protocol:
+
+```bash
+python scripts/ctrl_dna_comparison/promoter/build_arbitrary_seeds.py   # GPA
+python scripts/ctrl_dna_comparison/promoter/prepare_seeds.py \
+    --data_csv <promoter csv> --out_dir scripts/ctrl_dna_comparison/promoter/data
+```
+
+* **GPA** uses five independent uniform samples of 5,000 sequences from the
+  *training* split — one per seed, not cell-specific and not filtered by
+  activity, so the sampler gets a neutral starting pool.
+* **Ctrl-DNA** uses the bottom 256 rows by target-cell activity from the
+  held-out *test* split, one pool per cell, because its pipeline is designed to
+  start from low-activity sequence and optimise upward.
+
+Both promoter scripts stop with a message naming the builder if the pools are
+missing.
+
 ### The promoter comparison (Table 4)
 
 This benchmark designs 250 bp promoters for JURKAT, K562 and THP1 against the
@@ -371,11 +421,10 @@ is_test     boolean split flag
 ```
 
 The three flags must partition the rows; the scripts read them as given and do
-not resplit. The seed pools under `promoter/data/` are derived from the same
-CSV — regenerate them with `promoter/build_arbitrary_seeds.py` (GPA's uniform
-pools) and `promoter/prepare_seeds.py` (Ctrl-DNA's low-activity pools). Build this file from the Reddy et al. release using the regLM
+not resplit. Build it from the Reddy et al. release using the regLM
 preprocessing pipeline that Ctrl-DNA follows
-(https://github.com/Genentech/regLM). It is not redistributed here.
+(https://github.com/Genentech/regLM). It is not redistributed here, and neither
+are the seed pools derived from it — see **Seed selection** above.
 
 The script then trains one regLM `EnformerModel` per cell with an MSE head, the
 Enformer trunk initialised from pretrained weights, at 250 bp, 20 epochs, batch

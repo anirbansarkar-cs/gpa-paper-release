@@ -26,6 +26,14 @@ ORACLE_DIR="${ORACLE_DIR:-${PROMOTER_DIR}/checkpoints}"
 CELLS=(${CELLS:-JURKAT K562 THP1})
 SEEDS=(${SEEDS:-0 1 2 3 4})
 
+SEED_CSV_DIR="${SEED_CSV_DIR:-${PROMOTER_DIR}/data}"
+if [ ! -f "${SEED_CSV_DIR}/seeds_JURKAT.csv" ]; then
+  echo "error: per-cell seed pools not found in ${SEED_CSV_DIR}." >&2
+  echo "Build them: python ${PROMOTER_DIR}/prepare_seeds.py" >&2
+  echo "See 'Seed selection' in the README." >&2
+  exit 1
+fi
+
 for CELL in "${CELLS[@]}"; do
   for SEED in "${SEEDS[@]}"; do
     OUT="${OUT_ROOT}/ctrldna_r200_${CELL}_seed${SEED}"
@@ -34,7 +42,7 @@ for CELL in "${CELLS[@]}"; do
         --hyenadna_checkpoint "${CKPT}" \
         --oracle_ckpt_dir "${ORACLE_DIR}" \
         --oracle_ranges "${PROMOTER_DIR}/data/oracle_ranges.json" \
-        --seed_csv "${PROMOTER_DIR}/data/seeds_${CELL}.csv" \
+        --seed_csv "${SEED_CSV_DIR}/seeds_${CELL}.csv" \
         --task "${CELL}" \
         --max_iter 200 \
         --epoch 5 \

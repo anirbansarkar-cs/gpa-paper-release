@@ -22,6 +22,14 @@ POP="${POP:-10000}"                # what the reported runs used
 CELLS=(${CELLS:-JURKAT K562 THP1})
 SEEDS=(${SEEDS:-0 1 2 3 4})        # seeds_arbitrary_set{0..4}.csv
 
+SEED_CSV_DIR="${SEED_CSV_DIR:-${PROMOTER_DIR}/data}"
+if [ ! -f "${SEED_CSV_DIR}/seeds_arbitrary_set0.csv" ]; then
+  echo "error: promoter seed pools not found in ${SEED_CSV_DIR}." >&2
+  echo "Build them: python ${PROMOTER_DIR}/build_arbitrary_seeds.py" >&2
+  echo "See 'Seed selection' in the README." >&2
+  exit 1
+fi
+
 for CELL in "${CELLS[@]}"; do
   for SEED in "${SEEDS[@]}"; do
     OUT="${OUT_ROOT}/gpa_universal_${CELL}_seed${SEED}"
@@ -29,7 +37,7 @@ for CELL in "${CELLS[@]}"; do
     python "${PROMOTER_DIR}/run_gpa_hyenadna_promoter.py" \
         --hyenadna_checkpoint "${CKPT}" \
         --oracle_ckpt_dir "${ORACLE_DIR}" \
-        --seed_csv "${PROMOTER_DIR}/data/seeds_arbitrary_set${SEED}.csv" \
+        --seed_csv "${SEED_CSV_DIR}/seeds_arbitrary_set${SEED}.csv" \
         --target_cell "${CELL}" \
         --population_size "${POP}" \
         --max_beta 100 \

@@ -19,8 +19,10 @@ OUT_ROOT="${OUT_ROOT:-results/ledidi_comparison}"
 
 MDLM_CKPT="${MDLM_CKPT:-${GPA_SHARED_ROOT}/mdlm/lentimpra/best.ckpt}"
 LN_CKPT="${LN_CKPT:-${GPA_DATA_ROOT}/lentimpra/legnet_k562.ckpt}"
-POOL_RANDOM="${POOL_RANDOM:-${GPA_DATA_ROOT}/lentimpra/pool_random_5k.h5}"
-POOL_NATURAL="${POOL_NATURAL:-${GPA_DATA_ROOT}/lentimpra/pool_natural_5k.h5}"
+# Written by scripts/ledidi_comparison/build_seed_pools.py.
+SEED_POOL_DIR="${SEED_POOL_DIR:-${GPA_DATA_ROOT}/lentimpra/seed_pools}"
+POOL_RANDOM="${POOL_RANDOM:-${SEED_POOL_DIR}/pool_A_random_5k.h5}"
+POOL_NATURAL="${POOL_NATURAL:-${SEED_POOL_DIR}/pool_B_lentimpra_test_5k.h5}"
 
 # cap label : max edit fraction of the 200 bp core (0.10 -> 20 bp, ... 1.00 -> uncapped)
 CAPS=("cap20:0.10" "cap40:0.20" "cap60:0.30" "cap100:0.50" "uncap:1.00")
