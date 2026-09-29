@@ -352,8 +352,10 @@ python scripts/ctrl_dna_comparison/promoter/prepare_seeds.py \
   *training* split — one per seed, not cell-specific and not filtered by
   activity, so the sampler gets a neutral starting pool.
 * **Ctrl-DNA** uses the bottom 256 rows by target-cell activity from the
-  held-out *test* split, one pool per cell, because its pipeline is designed to
-  start from low-activity sequence and optimise upward.
+  held-out *test* split, one pool per cell. This is what our runs used; it is
+  not Ctrl-DNA's own rule, which sorts its init file by a specificity composite
+  and keeps the top 128. That init file is not in their release, so we could not
+  reuse it.
 
 Both promoter scripts stop with a message naming the builder if the pools are
 missing.

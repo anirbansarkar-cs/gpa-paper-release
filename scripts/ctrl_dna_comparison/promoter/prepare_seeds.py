@@ -1,8 +1,14 @@
-"""Build per-cell seed CSVs for CtrlDNA / GPA promoter runs.
+"""Build per-cell seed CSVs for the Ctrl-DNA promoter baseline.
 
-Ctrl-DNA's pipeline starts from low-activity sequences and optimizes upward.
-We pick the bottom-N rows by target-cell expression from the held-out test
-split of `finetuning_data.csv`, writing one CSV per cell.
+Picks the bottom-N rows by target-cell expression from the held-out test split
+of the promoter CSV, writing one CSV per cell.
+
+NOTE: this is not Ctrl-DNA's own selection rule. Their
+reinforce_multi_lagrange.py sorts its init file by a composite
+  2*target - (offtarget_0 - constraint_0) - (offtarget_1 - constraint_1)
+descending and keeps the top 128. We could not reproduce that here because the
+init file it reads (`{task}_{level}.csv`) is not part of their release. What
+this script produces is what our reported runs used.
 
 Output columns: sequence, <CELL>
 """
