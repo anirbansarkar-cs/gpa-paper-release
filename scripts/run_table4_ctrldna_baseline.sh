@@ -1,0 +1,55 @@
+#!/bin/bash
+# Ctrl-DNA baseline for the promoter comparison (Table 4).
+#
+# Constrained-RL fine-tuning of a HyenaDNA policy, one policy per target cell,
+# against the same three oracle checkpoints GPA designs against. Run
+# scripts/run_promoter_oracles.sh first.
+#
+# "R200" in the paper means --max_iter 200. Budget roughly two days per seed on
+# a single H100.
+#
+# NOTE ON CONFIGURATION. Ctrl-DNA's own promoter script
+# (ctrl_dna/reinforce_lagrange_promoters.sh) uses --max_iter 100 and per-cell
+# Lagrangian settings: lambda_lr 3e-4 (JURKAT) / 3e-3 (K562, THP1), and
+# lambda_value 0.1 0.9 (JURKAT) / 0.2 0.9 (K562) / 0.5 0.5 (THP1). The runs
+# reported in the paper used 200 iterations and a single setting across all
+# three cells, spelled out explicitly below rather than left to defaults.
+#
+# Requires the Ctrl-DNA release on disk; the wrapper imports
+# `src.reglm` and `dna_optimizers_multi` from it. Set CTRL_DNA_HOME if it is not
+# at ~/Ctrl-DNA.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+: "${GPA_SHARED_ROOT:?set GPA_SHARED_ROOT}"
+PROMOTER_DIR="scripts/ctrl_dna_comparison/promoter"
+OUT_ROOT="${OUT_ROOT:-results/ctrl_dna_comparison/promoter}"
+
+# Stage-1 HyenaDNA policy, the shared starting point for both methods.
+CKPT="${CKPT:-${GPA_SHARED_ROOT}/hyenadna/promoter_stage1_e3.ckpt}"
+ORACLE_DIR="${ORACLE_DIR:-${PROMOTER_DIR}/checkpoints}"
+
+CELLS=(${CELLS:-JURKAT K562 THP1})
+SEEDS=(${SEEDS:-0 1 2 3 4})
+
+for CELL in "${CELLS[@]}"; do
+  for SEED in "${SEEDS[@]}"; do
+    OUT="${OUT_ROOT}/ctrldna_r200_${CELL}_seed${SEED}"
+    mkdir -p "${OUT}"
+    python "${PROMOTER_DIR}/run_ctrldna_promoter.py" \
+        --hyenadna_checkpoint "${CKPT}" \
+        --oracle_ckpt_dir "${ORACLE_DIR}" \
+        --oracle_ranges "${PROMOTER_DIR}/data/oracle_ranges.json" \
+        --seed_csv "${PROMOTER_DIR}/data/seeds_${CELL}.csv" \
+        --task "${CELL}" \
+        --max_iter 200 \
+        --epoch 5 \
+        --batch_size 128 \
+        --beta 0.01 \
+        --lambda_lr 3e-1 \
+        --lambda_value 0.5 0.5 \
+        --checkpoint_interval 50 \
+        --seed "${SEED}" \
+        --out_dir "${OUT}"
+  done
+done

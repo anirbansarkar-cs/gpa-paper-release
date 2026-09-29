@@ -29,7 +29,8 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-_CTRLDNA_SRC = os.path.expandvars("${HOME}/Ctrl-DNA/ctrl_dna")
+_CTRLDNA_SRC = os.path.join(
+    os.environ.get("CTRL_DNA_HOME", os.path.expanduser("~/Ctrl-DNA")), "ctrl_dna")
 if _CTRLDNA_SRC not in sys.path:
     sys.path.insert(0, _CTRLDNA_SRC)
 

@@ -19,7 +19,8 @@ import numpy as np
 import pandas as pd
 import torch
 
-CTRL_DNA_SRC = Path(os.path.expandvars("${HOME}/Ctrl-DNA/ctrl_dna/src"))
+CTRL_DNA_SRC = Path(
+    os.environ.get("CTRL_DNA_HOME", os.path.expanduser("~/Ctrl-DNA"))) / "ctrl_dna" / "src"
 if str(CTRL_DNA_SRC) not in sys.path:
     sys.path.insert(0, str(CTRL_DNA_SRC))
 from reglm.regression import EnformerModel, SeqDataset  # noqa: E402

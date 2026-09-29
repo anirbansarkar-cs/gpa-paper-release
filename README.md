@@ -180,7 +180,9 @@ scripts/
   run_table1_dnacraft.sh           Table 1 — DNA-CRAFT enhancer benchmark
   run_table2_gosai.sh              Table 2 — Gosai HepG2, beta* in {5,10,15}
   run_fig2_crossoracle.sh          Figure 2 — LegNet/AlphaGenome cross-oracle
-  run_table4_promoter.sh           Table 4 — Ctrl-DNA Reddy promoter
+  run_promoter_oracles.sh          Table 4 — train the three promoter oracles
+  run_table4_promoter.sh           Table 4 — GPA
+  run_table4_ctrldna_baseline.sh   Table 4 — Ctrl-DNA baseline
   rerd_comparison/                 MDLM backbone + Enformer oracle (Tables 1, 2)
   k562_mdlm_gpa/                   LentiMPRA K562 driver + LegNet/AlphaGenome oracles
   ledidi_comparison/               ISM and LEDIDI baselines
@@ -289,6 +291,72 @@ bash scripts/run_table2_gosai.sh         # 3 betas x 3 reps, ~30 min/seed
 bash scripts/run_fig2_crossoracle.sh     # 2 pools x 5 edit caps x 3 seeds + baselines
 bash scripts/run_table4_promoter.sh      # 3 cells x 5 seeds, ~2.2 h/seed
 ```
+
+The promoter comparison has a prerequisite — see below.
+
+### The promoter comparison (Table 4)
+
+This benchmark designs 250 bp promoters for JURKAT, K562 and THP1 against the
+promoter MPRA of Reddy et al., *Designing Cell-Type-Specific Promoter Sequences
+Using Conservative Model-Based Optimization*, NeurIPS 2024.
+
+Both methods are scored by the same three activity oracles, and both design
+against them:
+
+```bash
+bash scripts/run_promoter_oracles.sh         # 1. train the three oracles
+bash scripts/run_table4_promoter.sh          # 2. GPA
+bash scripts/run_table4_ctrldna_baseline.sh  # 3. Ctrl-DNA baseline (slow)
+```
+
+Note what this means for interpretation: on this benchmark the design oracle and
+the evaluation oracle are the same model. There is no held-out oracle, as there
+is for the Gosai protocol in `run_table2_gosai.sh`. The comparison is symmetric —
+both methods optimise exactly what they are scored on — so it measures relative
+optimisation under a shared predictor, not transfer to an independent one. The
+cross-oracle experiment in `run_fig2_crossoracle.sh` is the one that tests
+transfer.
+
+**Ctrl-DNA on disk.** `train_oracles.py`, `oracle_adapter.py` and
+`run_ctrldna_promoter.py` import `src.reglm` and `dna_optimizers_multi` from the
+Ctrl-DNA release — the oracle architecture is theirs, not reimplemented here.
+Clone it and point `CTRL_DNA_HOME` at it (default `~/Ctrl-DNA`):
+
+```bash
+export CTRL_DNA_HOME=/path/to/Ctrl-DNA
+```
+
+**Training the promoter oracles.** `run_promoter_oracles.sh` expects a CSV at
+`scripts/ctrl_dna_comparison/promoter/data/finetuning_data.csv` with this
+schema, one row per measured promoter:
+
+```
+sequence    250 bp string over ACGT
+JURKAT      float, measured activity in JURKAT
+K562        float, measured activity in K562
+THP1        float, measured activity in THP1
+is_train    boolean split flag
+is_val      boolean split flag
+is_test     boolean split flag
+```
+
+The three flags must partition the rows; the training script reads them as given
+and does not resplit. Build this file from the Reddy et al. release using the
+regLM preprocessing pipeline that Ctrl-DNA follows
+(https://github.com/Genentech/regLM).
+
+The script then trains one regLM `EnformerModel` per cell with an MSE head, the
+Enformer trunk initialised from pretrained weights, at 250 bp, 20 epochs, batch
+128, lr 1e-4, mixed precision, gradient clipping 1.0, keeping the single best
+epoch by validation loss. It writes `human_paired_<cell>.ckpt` into
+`scripts/ctrl_dna_comparison/promoter/checkpoints/`, which is the filename
+Ctrl-DNA's `base_optimizer.load_target_model` looks for. It then reports
+held-out correlation per cell and regenerates `data/oracle_ranges.json`, the
+per-cell activity ranges used to normalise the composite objective.
+
+**Reproducibility caveat:** `train_oracles.py` sets no random seed, so repeated
+runs give different checkpoints. Pin one with `pytorch_lightning.seed_everything`
+at the top of `main()` if you need bitwise repeatability.
 
 Hyperparameters are inline and match the appendix tables. Grid dimensions can be
 overridden from the environment, e.g. `BETAS="5 10" bash scripts/run_table2_gosai.sh`.
